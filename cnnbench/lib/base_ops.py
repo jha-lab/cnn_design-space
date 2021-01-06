@@ -116,7 +116,7 @@ class MaxPool3x3(BaseOp):
 
   def build(self, inputs, channels):
     del channels    # Unused
-    net = keras.layers.MaxPool2D(
+    net = tf.keras.layers.MaxPool2D(
         pool_size=(3, 3),
         strides=(1, 1),
         padding='same',
@@ -158,7 +158,7 @@ class MaxPool3x3Conv1x1(BaseOp):
   """3x3 max pool with no subsampling followed by 1x1 for rescaling."""
 
   def build(self, inputs, channels):
-    net = tf.keras.layers.MaxPool3xD(
+    net = tf.keras.layers.MaxPool3D(
         pool_size=(3, 3),
         strides=(1, 1),
         padding='same',

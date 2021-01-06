@@ -80,7 +80,7 @@ numTask_end=$(($numTasks-1))
 
 modelDir="../results/vertices_${numVertices}"
 
-job_file="job_nasbench_n${numNodes}_t${numTasks}_v${numVertices}.slurm"
+job_file="job_cnnbench_n${numNodes}_t${numTasks}_v${numVertices}.slurm"
 
 echo "#!/bin/bash
 #SBATCH --job-name=cnnbench_multi           # create a short name for your job
