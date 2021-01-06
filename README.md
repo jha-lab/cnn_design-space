@@ -3,7 +3,7 @@
 ![Python Version](https://img.shields.io/badge/python-v3.8-blue)
 ![Conda](https://img.shields.io/badge/conda%7Cconda--forge-v4.8.3-blue)
 ![Tensorflow](https://img.shields.io/badge/tensorflow--gpu-v2.2-orange)
-<!-- ![Commits Since Last Release](https://img.shields.io/github/commits-since/JHA-Lab/cnn_design-space/v0.1/main) -->
+![Commits Since Last Release](https://img.shields.io/github/commits-since/JHA-Lab/cnn_design-space/v0.1/main)
 ![Tests](https://img.shields.io/badge/tests-passing-brightgreen)
 ![Hits](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2FJHA-Lab%2Fcnn_design-space&count_bg=%23FFC401&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=hits&edge_flat=false)
 
