@@ -14,8 +14,8 @@ The code has been forked from [nasbench](https://github.com/google-research/nasb
 
 1. Clone this repository
 ```
-git clone https://github.com/JHA-Lab/accelerator_co-design.git
-cd accelerator_co-design/CNN \Design \Space/
+git clone https://github.com/JHA-Lab/cnn_design-space.git
+cd cnn_design-space
 ```
 2. Setup python environment  
 * **PIP**
