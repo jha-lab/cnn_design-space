@@ -27,3 +27,5 @@ done
 wait
 
 python cleanup_script.py '../results/vertices_2/evaluation'
+
+python generate_dataset_script.py '../results/vertices_2'

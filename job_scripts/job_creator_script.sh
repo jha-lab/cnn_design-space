@@ -108,6 +108,8 @@ done
 
 wait
 
-python cleanup_script.py '${modelDir}/evaluation'" > $job_file
+python cleanup_script.py '${modelDir}/evaluation'
+
+python generate_dataset_script.py '${modelDir}'" > $job_file
 
 sbatch $job_file
