@@ -8,6 +8,8 @@ if '../' not in sys.path:
 
 # Do not show warnings of deprecated functions
 import os
+import json
+import numpy as np
 import tensorflow as tf
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)  # or any {DEBUG, INFO, WARN, ERROR, FATAL} 
