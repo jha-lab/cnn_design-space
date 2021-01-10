@@ -84,6 +84,8 @@ flags.DEFINE_boolean('verify_isomorphism', True,
                      'Exhaustively verifies that each detected isomorphism'
                      ' is truly an isomorphism. This operation is very'
                      ' expensive.')
+flags.DEFINE_string('hash_algo', 'md5', 'Hash algorithm used among'
+                    ' ["md5", "sha256", "sha512"]')
 FLAGS = flags.FLAGS
 
 
@@ -111,7 +113,7 @@ def main(_):
                                           for _ in range(vertices-2)]):
         total_graphs += 1
         labeling = [-1] + list(labeling) + [-2]
-        fingerprint = graph_util.hash_module(matrix, labeling)
+        fingerprint = graph_util.hash_module(matrix, labeling, FLAGS.hash_algo)
 
         if fingerprint not in buckets:
           buckets[fingerprint] = (matrix.tolist(), labeling)

@@ -92,7 +92,7 @@ def num_edges(matrix):
   return np.sum(matrix)
 
 
-def hash_module(matrix, labeling):
+def hash_module(matrix, labeling, algo):
   """Computes a graph-invariance MD5 hash of the matrix and label pair.
 
   Args:
@@ -109,7 +109,7 @@ def hash_module(matrix, labeling):
 
   assert len(in_edges) == len(out_edges) == len(labeling)
   hashes = list(zip(out_edges, in_edges, labeling))
-  hashes = [hashlib.md5(str(h).encode('utf-8')).hexdigest() for h in hashes]
+  hashes = [eval(f"hashlib.{algo}(str(h).encode('utf-8')).hexdigest()") for h in hashes]
   # Computing this up to the diameter is probably sufficient but since the
   # operation is fast, it is okay to repeat more times.
   for _ in range(vertices):
