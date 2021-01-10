@@ -41,7 +41,7 @@ with tf.compat.v1.python_io.TFRecordWriter(os.path.join(model_dir, 'cnnbench.tfr
                     raw_adjacency = models[model][0]
                     raw_labels = models[model][1]
                     adjacency = np.array(raw_adjacency)
-                    labels = (['input'] + [self.config['available_ops'][lab] for lab in raw_labels[1:-1]] + ['output'])
+                    labels = (['input'] + [config['available_ops'][lab] for lab in raw_labels[1:-1]] + ['output'])
                     string_labels = ''
                     for label in labels:
                         string_labels = string_labels + label + ','
@@ -72,3 +72,16 @@ with tf.compat.v1.python_io.TFRecordWriter(os.path.join(model_dir, 'cnnbench.tfr
                     
                     if DEBUG: print(example)
                     writer.write(example.SerializeToString())
+
+class bcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKCYAN = '\033[96m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
+print(f'{bcolors.OKGREEN}Saved dataset{bcolors.ENDC} to {os.path.join(model_dir, "cnnbench.tfrecord")}')
