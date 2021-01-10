@@ -11,45 +11,45 @@ Help()
    # Display Help
    echo "Flags for this script"
    echo
-   echo "Syntax: source job_creator_script.sh [-numNodes|numTasks|cluster|vertices]"
+   echo "Syntax: source job_creator_script.sh [--numNodes|numTasks|cluster|vertices]"
    echo "Options:"
-   echo -e "-numNodes [default = 1] \t\t Number of nodes to use in cluster"
-   echo -e "-numTasks [default = 2] \t\t Number of tasks across all nodes"
-   echo -e "-cluster [default = \"adroit\"] \t\t Selected cluster - adroit or tiger"
-   echo -e "-vertices [default = 2] \t\t Number of vertices per module in NASBench"
-   echo -e "-help \t\t\t\t\t Call this help message"
+   echo -e "--numNodes [default = 1] \t\t Number of nodes to use in cluster"
+   echo -e "--numTasks [default = 2] \t\t Number of tasks across all nodes"
+   echo -e "--cluster [default = \"adroit\"] \t\t Selected cluster - adroit or tiger"
+   echo -e "--vertices [default = 2] \t\t Number of vertices per module in NASBench"
+   echo -e "--help \t\t\t\t\t Call this help message"
    echo
 }
 
 while [[ $# -gt 0 ]]
 do
 case "$1" in
-    -numNodes)
+    --numNodes)
         shift
         numNodes=$1
         shift
         ;;
-    -numTasks)
+    --numTasks)
         shift
         numTasks=$1
         shift
         ;;
-    -cluster)
+    --cluster)
         shift
         cluster=$1
         shift
         ;;
-    -vertices)
+    --vertices)
         shift
         numVertices=$1
         shift
         ;;    
-    -help)
+    --help)
        Help
        return 1;
        ;;
     *)
-       echo "Unrecognized flag -$1"
+       echo "Unrecognized flag --$1"
        return 1;
        ;;
 esac
