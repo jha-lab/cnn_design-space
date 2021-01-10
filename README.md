@@ -65,9 +65,9 @@ _To run evaluation over graphs generate with 'n' vertices, use:_ `python run_eva
 
 4. Generate the dataset `cnnbench.tfrecord`
 ```
-python generate_dataset_script ../results/vertices_2
+python generate_dataset_script.py ../results/vertices_2
 ```
-This generates the CNNBench dataset in a `.tfrecord` file with the evaluation results for all computational graphs.
+This generates the CNNBench dataset in a `.tfrecord` file with the evaluation results for all computational graphs that are trained.
 
 _For visualization use:_ `visualization/cnnbench_results.ipynb`.
 
