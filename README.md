@@ -51,9 +51,9 @@ _To use another dataset (among CIFAR-10, CIFAR-100, MNIST, or ImageNet) use inpu
 cd ../../job_scripts
 python generate_graphs_script.py
 ```
-This will create a `.json` file of all graphs at: `../results/vertices_2/generate_graphs.json`.
+This will create a `.json` file of all graphs at: `../results/vertices_2/generate_graphs.json` using the MD5 hashing algorithm.
 
-_To generate graphs of upto 'n' vertices use:_ `python generate_graphs_script.py --max_vertices n`.
+_To generate graphs of upto 'n' vertices with SHA-256 hashing algorithm use:_ `python generate_graphs_script.py --max_vertices n --hash_algo sha256`.
 
 3. Run evaluation over all the generated graphs
 ```
@@ -63,16 +63,23 @@ This will save all the evaluated results and model checkpoints to `../results/ve
 
 _To run evaluation over graphs generate with 'n' vertices, use:_ `python run_evaluation_script.py --module_vertices n`. _For more input arguments, check:_ `python run_evaluation_script.py -helpful`.
 
+4. Generate the dataset `cnnbench.tfrecord`
+```
+python generate_dataset_script ../results/vertices_2
+```
+This generates the CNNBench dataset in a `.tfrecord` file with the evaluation results for all computational graphs.
+
+_For visualization use:_ `visualization/cnnbench_results.ipynb`.
+
 ## Job Scripts
 
 To automate the above process, a slurm script is provided at: `job_scripts/job_test.slurm`. To run the tool on multiple nodes and utilize multiple GPUs, use `job_scripts/job_creator_script.sh`. 
-For more details on how to use this script, check: `source job_scripts/job_creator_script.sh -help`. Currently, these scripts only support running on **Adroit/Tiger clusters** at Princeton University. 
+For more details on how to use this script, check: `source job_scripts/job_creator_script.sh --help`. Currently, these scripts only support running on **Adroit/Tiger clusters** at Princeton University. 
 More information can be found at the [Princeton Research Computing website](https://researchcomputing.princeton.edu/systems-and-services/available-systems).
 
 ## Todo
 
 1. Save keras checkpoints.
-2. Generate `cnnbench.tfrecord` with evaluation metrics for all computational graphs.
-3. Add more basic operations into `base_ops.py`.
-4. Define popular networks in CNNBench framework.
-5. Graph generation in the expanded design space starting from clusters around popular networks.
+2. Add more basic operations into `base_ops.py`.
+3. Define popular networks in CNNBench framework.
+4. Graph generation in the expanded design space starting from clusters around popular networks.
