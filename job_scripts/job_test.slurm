@@ -28,4 +28,4 @@ wait
 
 python cleanup_script.py '../results/vertices_2/evaluation'
 
-python generate_dataset_script.py '../results/vertices_2'
+python generate_dataset_script.py --model_dir '../results/vertices_2'

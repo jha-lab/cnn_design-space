@@ -1,6 +1,10 @@
 # Generates graphs and trains on multiple workers
 # Author :  Shikhar Tuli
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import sys
 
 if '../' not in sys.path:
@@ -25,27 +29,32 @@ FLAGS.module_vertices = 2
 FLAGS.use_tpu = False # For training on single CPU/GPU per worker
 FLAGS.train_epochs = 4
 
-# Parse flags before access
-FLAGS(sys.argv)
-
-FLAGS.models_file = f'../results/vertices_{FLAGS.module_vertices}/generated_graphs.json'
-FLAGS.output_dir = f'../results/vertices_{FLAGS.module_vertices}/evaluation'
-
 FLAGS.data_dir = '../datasets/'
 
-# Run single worker evaluation
-worker_id = FLAGS.worker_id + FLAGS.worker_id_offset
+def main(args):
+	del args 
 
-# Forcing evaluation on specified GPU (if GPU is available)
-gpus = tf.config.experimental.list_physical_devices('GPU')
-if gpus:
-	tf.config.experimental.set_visible_devices(gpus[worker_id % len(gpus)], 'GPU')
+	worker_id = FLAGS.worker_id + FLAGS.worker_id_offset
 
-evaluator = run_evaluation.Evaluator(
-  models_file=FLAGS.models_file,
-  output_dir=FLAGS.output_dir,
-  worker_id=worker_id,
-  total_workers=FLAGS.total_workers,
-  model_id_regex=FLAGS.model_id_regex)
+	if not FLAGS.models_file:
+		FLAGS.models_file = f'../results/vertices_{FLAGS.module_vertices}/generated_graphs.json'
 
-evaluator.run_evaluation()
+	if not FLAGS.output_dir:
+		FLAGS.output_dir = f'../results/vertices_{FLAGS.module_vertices}/evaluation'
+
+	# Forcing evaluation on specified GPU (if GPU is available)
+	gpus = tf.config.experimental.list_physical_devices('GPU')
+	if gpus:
+		tf.config.experimental.set_visible_devices(gpus[worker_id % len(gpus)], 'GPU')
+
+	evaluator = run_evaluation.Evaluator(
+	  models_file=FLAGS.models_file,
+	  output_dir=FLAGS.output_dir,
+	  worker_id=worker_id,
+	  total_workers=FLAGS.total_workers,
+	  model_id_regex=FLAGS.model_id_regex)
+
+	evaluator.run_evaluation()
+
+if __name__ == '__main__':
+	app.run(main)

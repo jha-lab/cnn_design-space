@@ -91,6 +91,36 @@ class Identity(BaseOp):
     return tf.identity(inputs, name='identity')
 
 
+class Conv11x11BnRelu(BaseOp):
+  """11x11 convolution with batch norm and ReLU activation."""
+
+  def build(self, inputs, channels):
+    net = conv_bn_relu(
+        inputs, 11, channels, self.is_training, self.data_format)
+
+    return net
+
+
+class Conv7x7BnRelu(BaseOp):
+  """7x7 convolution with batch norm and ReLU activation."""
+
+  def build(self, inputs, channels):
+    net = conv_bn_relu(
+        inputs, 7, channels, self.is_training, self.data_format)
+
+    return net
+
+
+class Conv5x5BnRelu(BaseOp):
+  """5x5 convolution with batch norm and ReLU activation."""
+
+  def build(self, inputs, channels):
+    net = conv_bn_relu(
+        inputs, 5, channels, self.is_training, self.data_format)
+
+    return net
+
+
 class Conv3x3BnRelu(BaseOp):
   """3x3 convolution with batch norm and ReLU activation."""
 
@@ -172,6 +202,9 @@ class MaxPool3x3Conv1x1(BaseOp):
 # Commas should not be used in op names
 OP_MAP = {
     'identity': Identity,
+    'conv11x11-bn-relu': Conv11x11BnRelu,
+    'conv7x7-bn-relu': Conv7x7BnRelu,
+    'conv5x5-bn-relu': Conv5x5BnRelu,
     'conv3x3-bn-relu': Conv3x3BnRelu,
     'conv1x1-bn-relu': Conv1x1BnRelu,
     'maxpool3x3': MaxPool3x3,

@@ -5,51 +5,84 @@ numTasks=2
 cluster="adroit"
 cluster_gpu="gpu:tesla_v100:2"
 numVertices=2
+numOps=3
+baseOps="conv3x3-bn-relu,conv1x1-bn-relu,maxpool3x3"
+repeats=3
+numEpochs=4
+
+YELLOW='\033[0;33m'
+GREEN='\033[0;32m'
+CYAN='\033[0;36m'
+ENDC='\033[0m'
 
 Help()
 {
    # Display Help
    echo "Flags for this script"
    echo
-   echo "Syntax: source job_creator_script.sh [--numNodes|numTasks|cluster|vertices]"
-   echo "Options:"
-   echo -e "--numNodes [default = 1] \t\t Number of nodes to use in cluster"
-   echo -e "--numTasks [default = 2] \t\t Number of tasks across all nodes"
-   echo -e "--cluster [default = \"adroit\"] \t\t Selected cluster - adroit or tiger"
-   echo -e "--vertices [default = 2] \t\t Number of vertices per module in NASBench"
-   echo -e "--help \t\t\t\t\t Call this help message"
+   echo -e "Syntax: source ${CYAN}job_creator_script.sh${ENDC} [${YELLOW}flags${ENDC}]"
+   echo "Flags:"
+   echo -e "${YELLOW}-n${ENDC} | ${YELLOW}--numNodes${ENDC} [default = ${GREEN}1${ENDC}] \t\t Number of nodes to use in cluster"
+   echo -e "${YELLOW}-t${ENDC} | ${YELLOW}--numTasks${ENDC} [default = ${GREEN}2${ENDC}] \t\t Number of tasks across all nodes"
+   echo -e "${YELLOW}-c${ENDC} | ${YELLOW}--cluster${ENDC} [default = ${GREEN}\"adroit\"${ENDC}] \t Selected cluster - adroit or tiger"
+   echo -e "${YELLOW}-v${ENDC} | ${YELLOW}--vertices${ENDC} [default = ${GREEN}2${ENDC}] \t\t Number of vertices per module in NASBench"
+   echo -e "${YELLOW}-r${ENDC} | ${YELLOW}--repeats${ENDC} [default = ${GREEN}3${ENDC}] \t\t Number of training repeats for each model"
+   echo -e "${YELLOW}-e${ENDC} | ${YELLOW}--numEpochs${ENDC} [default = ${GREEN}4${ENDC}] \t\t Number of training epochs"
+   echo -e "${YELLOW}-o${ENDC} | ${YELLOW}--numOps${ENDC} [default = ${GREEN}3${ENDC}] \t\t Number of operations in every module"
+   echo -e "${YELLOW}-b${ENDC} | ${YELLOW}--baseOps${ENDC} \t\t\t\t Available base operations"
+   echo -e "${YELLOW}-h${ENDC} | ${YELLOW}--help${ENDC} \t\t\t\t Call this help message"
    echo
 }
 
 while [[ $# -gt 0 ]]
 do
 case "$1" in
-    --numNodes)
+    -n | --numNodes)
         shift
         numNodes=$1
         shift
         ;;
-    --numTasks)
+    -t | --numTasks)
         shift
         numTasks=$1
         shift
         ;;
-    --cluster)
+    -c | --cluster)
         shift
         cluster=$1
         shift
         ;;
-    --vertices)
+    -v | --vertices)
         shift
         numVertices=$1
         shift
-        ;;    
-    --help)
+        ;;
+    -r | --repeats)
+        shift
+        repeats=$1
+        shift
+        ;;
+    -e | --numEpochs)
+        shift
+        numEpochs=$1
+        shift
+        ;; 
+    -o | --numOps)
+        shift
+        numOps=$1
+        shift
+        ;;
+    -b | --baseOps)
+        shift
+        baseOps=$1
+        shift
+        ;;         
+    -h | --help)
        Help
        return 1;
        ;;
     *)
-       echo "Unrecognized flag --$1"
+       echo "Unrecognized flag $1"
        return 1;
        ;;
 esac
@@ -80,7 +113,7 @@ numTask_end=$(($numTasks-1))
 
 modelDir="../results/vertices_${numVertices}"
 
-job_file="job_cnnbench_n${numNodes}_t${numTasks}_v${numVertices}.slurm"
+job_file="job_cnnbench_n${numNodes}_t${numTasks}_v${numVertices}_n${numOps}_r${repeats}_e${numEpochs}.slurm"
 
 echo "#!/bin/bash
 #SBATCH --job-name=cnnbench_multi           # create a short name for your job
@@ -97,11 +130,13 @@ module purge
 module load anaconda3/2020.7
 conda activate cnnbench
 
-python generate_graphs_script.py --max_vertices ${numVertices} --output_file '${modelDir}/generated_graphs.json'
+python generate_graphs_script.py --max_vertices ${numVertices} \
+--num_ops ${numOps} --output_file '${modelDir}/generated_graphs.json'
 
 for i in {0..${numTask_end}}
 do
   python run_evaluation_script.py --worker_id \$i --total_workers ${numTasks} --module_vertices ${numVertices} \
+  --available_ops ${baseOps} \
   --models_file '${modelDir}/generated_graphs.json' \
   --output_dir '${modelDir}/evaluation' &
 done
@@ -110,6 +145,6 @@ wait
 
 python cleanup_script.py '${modelDir}/evaluation'
 
-python generate_dataset_script.py '${modelDir}'" > $job_file
+python generate_dataset_script.py --model_dir '${modelDir}' --available_ops ${baseOps}" > $job_file
 
 sbatch $job_file
