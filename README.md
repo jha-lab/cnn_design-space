@@ -61,11 +61,11 @@ python run_evaluation_script.py
 ```
 This will save all the evaluated results and model checkpoints to `../results/vertices_2/evaluation`.
 
-_To run evaluation over graphs generate with 'n' vertices, use:_ `python run_evaluation_script.py --module_vertices n`. _For more input arguments, check:_ `python run_evaluation_script.py -helpful`.
+_To run evaluation over graphs generate with 'n' vertices, use:_ `python run_evaluation_script.py --module_vertices n`. _For more input arguments, check:_ `python run_evaluation_script.py --helpfull`.
 
 4. Generate the dataset `cnnbench.tfrecord`
 ```
-python generate_dataset_script.py ../results/vertices_2
+python generate_dataset_script.py --model_dir ../results/vertices_2
 ```
 This generates the CNNBench dataset in a `.tfrecord` file with the evaluation results for all computational graphs that are trained.
 
@@ -76,6 +76,12 @@ _For visualization use:_ `visualization/cnnbench_results.ipynb`.
 To automate the above process, a slurm script is provided at: `job_scripts/job_test.slurm`. To run the tool on multiple nodes and utilize multiple GPUs, use `job_scripts/job_creator_script.sh`. 
 For more details on how to use this script, check: `source job_scripts/job_creator_script.sh --help`. Currently, these scripts only support running on **Adroit/Tiger clusters** at Princeton University. 
 More information can be found at the [Princeton Research Computing website](https://researchcomputing.princeton.edu/systems-and-services/available-systems).
+
+## Colab
+
+You can directly run tests on the generated dataset using a Google Colaboratory without needing to install anything on your local machine. Click "Open in Colab" below:
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/JHA-Lab/cnn_design-space/blob/main/visualization/cnnbench_colab.ipynb)
 
 ## Todo
 
