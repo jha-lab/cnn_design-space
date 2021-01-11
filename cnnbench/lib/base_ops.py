@@ -39,11 +39,11 @@ def conv_bn_relu(inputs, conv_size, conv_filters, is_training, data_format):
     raise ValueError('invalid data_format')
 
   net = tf.keras.layers.Conv2D(
-      filters=conv_filters,
+      filters=conv_filters, 
       kernel_size=conv_size,
       strides=(1, 1),
-      use_bias=False,
-      kernel_initializer='uniform',
+      use_bias=False, # TODO: check for bias in popular CNNs
+      kernel_initializer='glorot_uniform',
       padding='same',
       data_format=data_format)(inputs)
 
@@ -56,6 +56,143 @@ def conv_bn_relu(inputs, conv_size, conv_filters, is_training, data_format):
   net = tf.keras.layers.ReLU()(net)
 
   return net
+
+
+def conv_dil_bn_relu(inputs, conv_size, conv_filters, dilation_rate=2, is_training, data_format):
+  """Dilated Convolution followed by batch norm and ReLU."""
+  if data_format == 'channels_last':
+    axis = 3
+  elif data_format == 'channels_first':
+    axis = 1
+  else:
+    raise ValueError('invalid data_format')
+
+  assert dilation_rate >= 2, 'Dilation rate must be greater than 1. Else use conv_bn_relu()'
+
+  net = tf.keras.layers.Conv2D(
+      filters=conv_filters, 
+      kernel_size=conv_size,
+      strides=(1, 1),
+      dilation_rate=dilation_rate,
+      use_bias=False, # TODO: check for bias in popular CNNs
+      kernel_initializer='glorot_uniform',
+      padding='same',
+      data_format=data_format)(inputs)
+
+  net = tf.keras.layers.BatchNormalization(
+      axis=axis,
+      momentum=BN_MOMENTUM,
+      epsilon=BN_EPSILON,
+      trainable=is_training)(net)
+
+  net = tf.keras.layers.ReLU()(net)
+
+  return net  
+
+
+def conv_dep_bn_relu(inputs, conv_size, conv_filters, is_training, data_format):
+  """Depthwise Convolution followed by batch norm and ReLU."""
+  if data_format == 'channels_last':
+    axis = 3
+  elif data_format == 'channels_first':
+    axis = 1
+  else:
+    raise ValueError('invalid data_format')
+
+  assert dilation_rate >= 2, 'Dilation rate must be greater than 1. Else use conv_bn_relu()'
+
+  net = tf.keras.layers.SeparableConv2D(
+      filters=conv_filters, 
+      kernel_size=conv_size,
+      strides=(1, 1),
+      dilation_rate=dilation_rate,
+      use_bias=False, # TODO: check for bias in popular CNNs
+      depthwise_initializer='glorot_uniform',
+      pointwise_initializer='glorot_uniform',
+      depth_multiplier=1, # TODO: check for depth_multiplier in popular CNNs
+      padding='same',
+      data_format=data_format)(inputs)
+
+  net = tf.keras.layers.BatchNormalization(
+      axis=axis,
+      momentum=BN_MOMENTUM,
+      epsilon=BN_EPSILON,
+      trainable=is_training)(net)
+
+  net = tf.keras.layers.ReLU()(net)
+
+  return net  
+
+
+def conv_gr_bn_relu(inputs, conv_size, conv_filters, groups, is_training, data_format):
+  """Convolution followed by batch norm and ReLU."""
+  if data_format == 'channels_last':
+    axis = 3
+  elif data_format == 'channels_first':
+    axis = 1
+  else:
+    raise ValueError('invalid data_format')
+
+  net = tf.keras.layers.Conv2D(
+      filters=conv_filters, 
+      kernel_size=conv_size,
+      groups=groups,
+      strides=(1, 1),
+      use_bias=False, # TODO: check for bias in popular CNNs
+      kernel_initializer='glorot_uniform',
+      padding='same',
+      data_format=data_format)(inputs)
+
+  net = tf.keras.layers.BatchNormalization(
+      axis=axis,
+      momentum=BN_MOMENTUM,
+      epsilon=BN_EPSILON,
+      trainable=is_training)(net)
+
+  net = tf.keras.layers.ReLU()(net)
+
+  return net
+
+
+def conv_3D_bn_relu(inputs, conv_size, conv_filters, is_training, data_format):
+  """3D Convolution followed by batch norm and ReLU."""
+  # TODO: add support for separate channel and depth in input
+
+  if data_format == 'channels_last':
+    axis = 3
+  elif data_format == 'channels_first':
+    axis = 1
+  else:
+    raise ValueError('invalid data_format')
+
+  net = tf.keras.layers.Conv3D(
+      filters=conv_filters, 
+      kernel_size=conv_size, # an integer or a tuple/list: (depth, height, width)
+      strides=(1, 1, 1),
+      use_bias=False, # TODO: check for bias in popular CNNs
+      kernel_initializer='glorot_uniform',
+      padding='valid',
+      data_format=data_format)(inputs)
+
+  net = tf.keras.layers.BatchNormalization(
+      axis=axis,
+      momentum=BN_MOMENTUM,
+      epsilon=BN_EPSILON,
+      trainable=is_training)(net)
+
+  net = tf.keras.layers.ReLU()(net)
+
+  return net
+
+
+def channel_shuffle(x, groups):  
+    _, width, height, channels = x.shape
+    group_ch = channels // groups
+
+    x = tf.rkeras.layers.Reshape([width, height, group_ch, groups])(x)
+    x = tf.keras.layers.Permute([1, 2, 4, 3])(x)
+    x = tf.keras.layers.Reshape([width, height, channels])(x)
+    return x
 
 
 class BaseOp(object):
@@ -93,6 +230,7 @@ class Identity(BaseOp):
 
 class Conv11x11BnRelu(BaseOp):
   """11x11 convolution with batch norm and ReLU activation."""
+  # TODO: add support for variable number of filters
 
   def build(self, inputs, channels):
     net = conv_bn_relu(
@@ -103,6 +241,7 @@ class Conv11x11BnRelu(BaseOp):
 
 class Conv7x7BnRelu(BaseOp):
   """7x7 convolution with batch norm and ReLU activation."""
+  # TODO: add support for variable number of filters
 
   def build(self, inputs, channels):
     net = conv_bn_relu(
@@ -113,6 +252,7 @@ class Conv7x7BnRelu(BaseOp):
 
 class Conv5x5BnRelu(BaseOp):
   """5x5 convolution with batch norm and ReLU activation."""
+  # TODO: add support for variable number of filters
 
   def build(self, inputs, channels):
     net = conv_bn_relu(
@@ -123,6 +263,7 @@ class Conv5x5BnRelu(BaseOp):
 
 class Conv3x3BnRelu(BaseOp):
   """3x3 convolution with batch norm and ReLU activation."""
+  # TODO: add support for variable number of filters
 
   def build(self, inputs, channels):
     net = conv_bn_relu(
@@ -133,6 +274,7 @@ class Conv3x3BnRelu(BaseOp):
 
 class Conv1x1BnRelu(BaseOp):
   """1x1 convolution with batch norm and ReLU activation."""
+  # TODO: add support for variable number of filters
 
   def build(self, inputs, channels):
     net = conv_bn_relu(
@@ -157,7 +299,7 @@ class MaxPool3x3(BaseOp):
 
 class BottleneckConv3x3(BaseOp):
   """[1x1(/4)]+3x3+[1x1(*4)] conv. Uses BN + ReLU post-activation."""
-  # TODO(chrisying): verify this block can reproduce results of ResNet-50.
+  # TODO: verify this block can reproduce results of ResNet-50.
 
   def build(self, inputs, channels):
     net = conv_bn_relu(
