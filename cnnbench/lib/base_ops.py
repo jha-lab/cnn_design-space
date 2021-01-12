@@ -27,6 +27,8 @@ VALID_DATA_FORMATS = frozenset(['channels_last', 'channels_first'])
 MIN_FILTERS = 8
 BN_MOMENTUM = 0.997
 BN_EPSILON = 1e-5
+DROPOUT_RATE = 0.25
+LEAKY_RELU_ALPHA = 0.3
 
 
 def conv_bn_relu(inputs, conv_size, conv_filters, is_training, data_format):
@@ -54,6 +56,35 @@ def conv_bn_relu(inputs, conv_size, conv_filters, is_training, data_format):
       trainable=is_training)(net)
 
   net = tf.keras.layers.ReLU()(net)
+
+  return net
+
+
+def conv_bn_leaky_relu(inputs, conv_size, conv_filters, is_training, data_format):
+  """Convolution followed by batch norm and ReLU."""
+  if data_format == 'channels_last':
+    axis = 3
+  elif data_format == 'channels_first':
+    axis = 1
+  else:
+    raise ValueError('invalid data_format')
+
+  net = tf.keras.layers.Conv2D(
+      filters=conv_filters, 
+      kernel_size=conv_size,
+      strides=(1, 1),
+      use_bias=False, # TODO: check for bias in popular CNNs
+      kernel_initializer='glorot_uniform',
+      padding='same',
+      data_format=data_format)(inputs)
+
+  net = tf.keras.layers.BatchNormalization(
+      axis=axis,
+      momentum=BN_MOMENTUM,
+      epsilon=BN_EPSILON,
+      trainable=is_training)(net)
+
+  net = tf.keras.layers.LeakyReLU(alpha=LEAKY_RELU_ALPHA)(net)
 
   return net
 
@@ -125,7 +156,7 @@ def conv_dep_bn_relu(inputs, conv_size, conv_filters, is_training, data_format):
 
 
 def conv_gr_bn_relu(inputs, conv_size, conv_filters, groups, is_training, data_format):
-  """Convolution followed by batch norm and ReLU."""
+  """Grouped Convolution followed by batch norm and ReLU."""
   if data_format == 'channels_last':
     axis = 3
   elif data_format == 'channels_first':
@@ -172,6 +203,35 @@ def conv_3D_bn_relu(inputs, conv_size, conv_filters, is_training, data_format):
       use_bias=False, # TODO: check for bias in popular CNNs
       kernel_initializer='glorot_uniform',
       padding='valid',
+      data_format=data_format)(inputs)
+
+  net = tf.keras.layers.BatchNormalization(
+      axis=axis,
+      momentum=BN_MOMENTUM,
+      epsilon=BN_EPSILON,
+      trainable=is_training)(net)
+
+  net = tf.keras.layers.ReLU()(net)
+
+  return net
+
+
+def conv_tr_bn_relu(inputs, conv_size, conv_filters, is_training, data_format):
+  """Transposed Convolution followed by batch norm and ReLU."""
+  if data_format == 'channels_last':
+    axis = 3
+  elif data_format == 'channels_first':
+    axis = 1
+  else:
+    raise ValueError('invalid data_format')
+
+  net = tf.keras.layers.Conv2DTranspose(
+      filters=conv_filters, 
+      kernel_size=conv_size,
+      strides=(1, 1),
+      use_bias=False, # TODO: check for bias in popular CNNs
+      kernel_initializer='glorot_uniform',
+      padding='valid', # TODO: check for padding in popular CNNs, might need to use padding before this layer
       data_format=data_format)(inputs)
 
   net = tf.keras.layers.BatchNormalization(
@@ -297,6 +357,43 @@ class MaxPool3x3(BaseOp):
     return net
 
 
+class AvgPool3x3(BaseOp):
+  """3x3 average pool with no subsampling."""
+
+  def build(self, inputs, channels):
+    del channels    # Unused
+    net = tf.keras.layers.AveragePooling2D(
+        pool_size=(3, 3),
+        strides=(1, 1),
+        padding='same',
+        data_format=self.data_format)(inputs)
+
+    return net
+
+
+class GobalAvgPool(BaseOp):
+  """global average pool with no subsampling."""
+
+  def build(self, inputs, channels):
+    del channels    # Unused
+    net = tf.keras.layers.GlobalAveragePooling2D(
+        data_format=self.data_format)(inputs)
+
+    return net
+
+
+class ZeroPadding(BaseOp):
+  """3x3 max pool with no subsampling."""
+
+  def build(self, inputs, channels):
+    del channels    # Unused
+    net = tf.keras.layers.ZeroPadding2D(
+        padding=(1, 1), # TODO: add support for multiple paddings
+        data_format=self.data_format)(inputs)
+
+    return net
+
+
 class BottleneckConv3x3(BaseOp):
   """[1x1(/4)]+3x3+[1x1(*4)] conv. Uses BN + ReLU post-activation."""
   # TODO: verify this block can reproduce results of ResNet-50.
@@ -337,6 +434,17 @@ class MaxPool3x3Conv1x1(BaseOp):
         data_format=self.data_format)(ipnuts)
 
     net = conv_bn_relu(net, 1, channels, self.is_training, self.data_format)
+
+    return net
+
+
+class Dropout(BaseOp):
+  """3x3 max pool with no subsampling."""
+
+  def build(self, inputs, channels):
+    del channels    # Unused
+    net = tf.keras.layers.Dropout(
+        rate=DROPOUT_RATE)(inputs)
 
     return net
 
