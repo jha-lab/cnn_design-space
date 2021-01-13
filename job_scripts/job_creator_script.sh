@@ -7,7 +7,7 @@ cluster_gpu="gpu:tesla_v100:2"
 numVertices=2
 numOps=3
 baseOps="conv3x3-bn-relu,conv1x1-bn-relu,maxpool3x3"
-repeats=3
+numRepeats=3
 numEpochs=4
 
 YELLOW='\033[0;33m'
@@ -25,8 +25,8 @@ Help()
    echo -e "${YELLOW}-n${ENDC} | ${YELLOW}--numNodes${ENDC} [default = ${GREEN}1${ENDC}] \t\t Number of nodes to use in cluster"
    echo -e "${YELLOW}-t${ENDC} | ${YELLOW}--numTasks${ENDC} [default = ${GREEN}2${ENDC}] \t\t Number of tasks across all nodes"
    echo -e "${YELLOW}-c${ENDC} | ${YELLOW}--cluster${ENDC} [default = ${GREEN}\"adroit\"${ENDC}] \t Selected cluster - adroit or tiger"
-   echo -e "${YELLOW}-v${ENDC} | ${YELLOW}--vertices${ENDC} [default = ${GREEN}2${ENDC}] \t\t Number of vertices per module in NASBench"
-   echo -e "${YELLOW}-r${ENDC} | ${YELLOW}--repeats${ENDC} [default = ${GREEN}3${ENDC}] \t\t Number of training repeats for each model"
+   echo -e "${YELLOW}-v${ENDC} | ${YELLOW}--numVertices${ENDC} [default = ${GREEN}2${ENDC}] \t\t Number of vertices per module in NASBench"
+   echo -e "${YELLOW}-r${ENDC} | ${YELLOW}--numRepeats${ENDC} [default = ${GREEN}3${ENDC}] \t\t Number of training repeats for each model"
    echo -e "${YELLOW}-e${ENDC} | ${YELLOW}--numEpochs${ENDC} [default = ${GREEN}4${ENDC}] \t\t Number of training epochs"
    echo -e "${YELLOW}-o${ENDC} | ${YELLOW}--numOps${ENDC} [default = ${GREEN}3${ENDC}] \t\t Number of operations in every module"
    echo -e "${YELLOW}-b${ENDC} | ${YELLOW}--baseOps${ENDC} \t\t\t\t Available base operations"
@@ -52,14 +52,14 @@ case "$1" in
         cluster=$1
         shift
         ;;
-    -v | --vertices)
+    -v | --numVertices)
         shift
         numVertices=$1
         shift
         ;;
-    -r | --repeats)
+    -r | --numRepeats)
         shift
-        repeats=$1
+        numRepeats=$1
         shift
         ;;
     -e | --numEpochs)
@@ -113,7 +113,7 @@ numTask_end=$(($numTasks-1))
 
 modelDir="../results/vertices_${numVertices}"
 
-job_file="job_cnnbench_n${numNodes}_t${numTasks}_v${numVertices}_n${numOps}_r${repeats}_e${numEpochs}.slurm"
+job_file="job_cnnbench_n${numNodes}_t${numTasks}_v${numVertices}_n${numOps}_r${numRepeats}_e${numEpochs}.slurm"
 
 echo "#!/bin/bash
 #SBATCH --job-name=cnnbench_multi           # create a short name for your job
@@ -137,6 +137,7 @@ for i in {0..${numTask_end}}
 do
   python run_evaluation_script.py --worker_id \$i --total_workers ${numTasks} --module_vertices ${numVertices} \
   --available_ops ${baseOps} \
+  --num_repeats ${numRepeats} \
   --models_file '${modelDir}/generated_graphs.json' \
   --output_dir '${modelDir}/evaluation' &
 done
