@@ -31,7 +31,7 @@ DROPOUT_RATE = 0.25
 LEAKY_RELU_ALPHA = 0.3
 
 
-def conv_bn_relu(inputs, conv_size, conv_filters, is_training, data_format):
+def conv_bn_relu(inputs, conv_size, conv_filters, strides, is_training, data_format):
   """Convolution followed by batch norm and ReLU."""
   if data_format == 'channels_last':
     axis = 3
@@ -43,8 +43,8 @@ def conv_bn_relu(inputs, conv_size, conv_filters, is_training, data_format):
   net = tf.keras.layers.Conv2D(
       filters=conv_filters, 
       kernel_size=conv_size,
-      strides=(1, 1),
-      use_bias=True,
+      strides=strides,
+      use_bias=False, # bias already taken into account by batch-norm
       kernel_initializer='glorot_uniform',
       padding='same',
       data_format=data_format)(inputs)
@@ -60,7 +60,7 @@ def conv_bn_relu(inputs, conv_size, conv_filters, is_training, data_format):
   return net
 
 
-def conv_bn_leaky_relu(inputs, conv_size, conv_filters, is_training, data_format):
+def conv_bn_leaky_relu(inputs, conv_size, conv_filters, strides, is_training, data_format):
   """Convolution followed by batch norm and ReLU."""
   if data_format == 'channels_last':
     axis = 3
@@ -72,8 +72,8 @@ def conv_bn_leaky_relu(inputs, conv_size, conv_filters, is_training, data_format
   net = tf.keras.layers.Conv2D(
       filters=conv_filters, 
       kernel_size=conv_size,
-      strides=(1, 1),
-      use_bias=True, 
+      strides=strides,
+      use_bias=False, # bias already taken into account by batch-norm 
       kernel_initializer='glorot_uniform',
       padding='same',
       data_format=data_format)(inputs)
@@ -89,7 +89,7 @@ def conv_bn_leaky_relu(inputs, conv_size, conv_filters, is_training, data_format
   return net
 
 
-def conv_dil_bn_relu(inputs, conv_size, conv_filters, dilation_rate=2, is_training, data_format):
+def conv_dil_bn_relu(inputs, conv_size, conv_filters, strides, dilation_rate=2, is_training, data_format):
   """Dilated Convolution followed by batch norm and ReLU."""
   if data_format == 'channels_last':
     axis = 3
@@ -103,9 +103,9 @@ def conv_dil_bn_relu(inputs, conv_size, conv_filters, dilation_rate=2, is_traini
   net = tf.keras.layers.Conv2D(
       filters=conv_filters, 
       kernel_size=conv_size,
-      strides=(1, 1),
+      strides=strides,
       dilation_rate=dilation_rate,
-      use_bias=True, 
+      use_bias=False, # bias already taken into account by batch-norm 
       kernel_initializer='glorot_uniform',
       padding='same',
       data_format=data_format)(inputs)
@@ -121,7 +121,7 @@ def conv_dil_bn_relu(inputs, conv_size, conv_filters, dilation_rate=2, is_traini
   return net  
 
 
-def conv_dep_bn_relu(inputs, conv_size, conv_filters, is_training, data_format):
+def conv_dep_bn_relu(inputs, conv_size, conv_filters, strides, is_training, data_format):
   """Depthwise Convolution followed by batch norm and ReLU."""
   if data_format == 'channels_last':
     axis = 3
@@ -135,9 +135,9 @@ def conv_dep_bn_relu(inputs, conv_size, conv_filters, is_training, data_format):
   net = tf.keras.layers.SeparableConv2D(
       filters=conv_filters, 
       kernel_size=conv_size,
-      strides=(1, 1),
+      strides=strides,
       dilation_rate=dilation_rate,
-      use_bias=True, 
+      use_bias=False, # bias already taken into account by batch-norm 
       depthwise_initializer='glorot_uniform',
       pointwise_initializer='glorot_uniform',
       depth_multiplier=1, # TODO: check for depth_multiplier in popular CNNs
@@ -155,7 +155,7 @@ def conv_dep_bn_relu(inputs, conv_size, conv_filters, is_training, data_format):
   return net  
 
 
-def conv_gr_bn_relu(inputs, conv_size, conv_filters, groups, is_training, data_format):
+def conv_gr_bn_relu(inputs, conv_size, conv_filters, strides, groups, is_training, data_format):
   """Grouped Convolution followed by batch norm and ReLU."""
   if data_format == 'channels_last':
     axis = 3
@@ -168,8 +168,8 @@ def conv_gr_bn_relu(inputs, conv_size, conv_filters, groups, is_training, data_f
       filters=conv_filters, 
       kernel_size=conv_size,
       groups=groups,
-      strides=(1, 1),
-      use_bias=True, 
+      strides=strides,
+      use_bias=False, # bias already taken into account by batch-norm 
       kernel_initializer='glorot_uniform',
       padding='same',
       data_format=data_format)(inputs)
@@ -185,7 +185,7 @@ def conv_gr_bn_relu(inputs, conv_size, conv_filters, groups, is_training, data_f
   return net
 
 
-def conv_3D_bn_relu(inputs, conv_size, conv_filters, is_training, data_format):
+def conv_3D_bn_relu(inputs, conv_size, conv_filters, strides, is_training, data_format):
   """3D Convolution followed by batch norm and ReLU."""
   # TODO: add support for separate channel and depth in input
 
@@ -199,8 +199,8 @@ def conv_3D_bn_relu(inputs, conv_size, conv_filters, is_training, data_format):
   net = tf.keras.layers.Conv3D(
       filters=conv_filters, 
       kernel_size=conv_size, # an integer or a tuple/list: (depth, height, width)
-      strides=(1, 1, 1),
-      use_bias=True,
+      strides=strides,
+      use_bias=False, # bias already taken into account by batch-norm
       kernel_initializer='glorot_uniform',
       padding='valid',
       data_format=data_format)(inputs)
@@ -216,7 +216,7 @@ def conv_3D_bn_relu(inputs, conv_size, conv_filters, is_training, data_format):
   return net
 
 
-def conv_tr_bn_relu(inputs, conv_size, conv_filters, is_training, data_format):
+def conv_tr_bn_relu(inputs, conv_size, conv_filters, strides, is_training, data_format):
   """Transposed Convolution followed by batch norm and ReLU."""
   if data_format == 'channels_last':
     axis = 3
@@ -228,8 +228,8 @@ def conv_tr_bn_relu(inputs, conv_size, conv_filters, is_training, data_format):
   net = tf.keras.layers.Conv2DTranspose(
       filters=conv_filters, 
       kernel_size=conv_size,
-      strides=(1, 1),
-      use_bias=True, 
+      strides=strides,
+      use_bias=False, # bias already taken into account by batch-norm 
       kernel_initializer='glorot_uniform',
       padding='valid', # TODO: check for padding in popular CNNs, might need to use padding before this layer
       data_format=data_format)(inputs)
@@ -245,7 +245,8 @@ def conv_tr_bn_relu(inputs, conv_size, conv_filters, is_training, data_format):
   return net
 
 
-def channel_shuffle(x, groups, data_format):  
+def channel_shuffle(x, groups, data_format='channels_last'):  
+    """Channel shuffle based on groups"""
     if data_format == 'channels_last':
       _, height, width, channels = x.shape
       group_ch = channels // groups
@@ -258,7 +259,7 @@ def channel_shuffle(x, groups, data_format):
       x = tf.keras.layers.Reshape([group_ch, groups, height, width])(x)
       x = tf.keras.layers.Permute([2, 1, 3, 4])(x)
       x = tf.keras.layers.Reshape([channels, height, width])(x)
-      
+
     return x
 
 
@@ -273,7 +274,7 @@ class BaseOp(object):
     self.data_format = data_format.lower()
 
   @abc.abstractmethod
-  def build(self, inputs, channels):
+  def build(self, inputs, channels): # TODO: implement without channels
     """Builds the operation with input tensors and returns an output tensor.
 
     Args:
@@ -301,7 +302,7 @@ class Conv11x11BnRelu(BaseOp):
 
   def build(self, inputs, channels):
     net = conv_bn_relu(
-        inputs, 11, channels, self.is_training, self.data_format)
+        inputs, 11, channels, (1, 1), self.is_training, self.data_format)
 
     return net
 
@@ -312,7 +313,7 @@ class Conv7x7BnRelu(BaseOp):
 
   def build(self, inputs, channels):
     net = conv_bn_relu(
-        inputs, 7, channels, self.is_training, self.data_format)
+        inputs, 7, channels, (1, 1), self.is_training, self.data_format)
 
     return net
 
@@ -323,7 +324,7 @@ class Conv5x5BnRelu(BaseOp):
 
   def build(self, inputs, channels):
     net = conv_bn_relu(
-        inputs, 5, channels, self.is_training, self.data_format)
+        inputs, 5, channels, (1, 1), self.is_training, self.data_format)
 
     return net
 
@@ -334,7 +335,7 @@ class Conv3x3BnRelu(BaseOp):
 
   def build(self, inputs, channels):
     net = conv_bn_relu(
-        inputs, 3, channels, self.is_training, self.data_format)
+        inputs, 3, channels, (1, 1), self.is_training, self.data_format)
 
     return net
 
@@ -345,7 +346,7 @@ class Conv1x1BnRelu(BaseOp):
 
   def build(self, inputs, channels):
     net = conv_bn_relu(
-        inputs, 1, channels, self.is_training, self.data_format)
+        inputs, 1, channels, (1, 1), self.is_training, self.data_format)
 
     return net
 
@@ -384,6 +385,16 @@ class GobalAvgPool(BaseOp):
   def build(self, inputs, channels):
     del channels    # Unused
     net = tf.keras.layers.GlobalAveragePooling2D(
+        data_format=self.data_format)(inputs)
+
+    return net
+
+class Flatten(BaseOp):
+  """global average pool with no subsampling."""
+
+  def build(self, inputs, channels):
+    del channels    # Unused
+    net = tf.keras.layers.Flatten(
         data_format=self.data_format)(inputs)
 
     return net
@@ -455,6 +466,81 @@ class Dropout(BaseOp):
 
     return net
 
+## Specialized base operations with channels pre-defined
+
+## Base operations for AlexNet
+class Conv11x11BnRelu_F96_S4(BaseOp):
+  """11x11 convolution with batch norm and ReLU activation."""
+
+  def build(self, inputs, channels):
+    net = conv_bn_relu(
+        inputs, 11, 96, (4, 4), self.is_training, self.data_format)
+
+    return net
+
+
+class MaxPool3x3_S2(BaseOp):
+  """3x3 max pool with no subsampling."""
+
+  def build(self, inputs, channels):
+    net = tf.keras.layers.MaxPool2D(
+        pool_size=(3, 3),
+        strides=(2, 2),
+        padding='same',
+        data_format=self.data_format)(inputs)
+
+    return net
+
+
+class Conv5x5BnRelu_F256(BaseOp):
+  """5x5 convolution with batch norm and ReLU activation."""
+
+  def build(self, inputs, channels):
+    net = conv_bn_relu(
+        inputs, 5, 256, (1, 1), self.is_training, self.data_format)
+
+    return net
+
+
+class Conv3x3BnRelu_F384(BaseOp):
+  """3x3 convolution with batch norm and ReLU activation."""
+
+  def build(self, inputs, channels):
+    net = conv_bn_relu(
+        inputs, 3, 384, (1, 1), self.is_training, self.data_format)
+
+    return net
+
+
+class Conv3x3BnRelu_F256(BaseOp):
+  """3x3 convolution with batch norm and ReLU activation."""
+
+  def build(self, inputs, channels):
+    net = conv_bn_relu(
+        inputs, 3, 256, (1, 1), self.is_training, self.data_format)
+
+    return net
+
+
+## Base operations for ResNet-50
+class Conv7x7BnRelu_F64_S2(BaseOp):
+  """7x7 convolution with batch norm and ReLU activation."""
+
+  def build(self, inputs, channels):
+    net = conv_bn_relu(
+        inputs, 7, 64, (2, 2), self.is_training, self.data_format)
+
+    return net
+
+
+class Conv1x1BnRelu_F64(BaseOp):
+  """1x1 convolution with batch norm and ReLU activation."""
+
+  def build(self, inputs, channels):
+    net = conv_bn_relu(
+        inputs, 1, 64, (1, 1), self.is_training, self.data_format)
+
+    return net
 
 # Commas should not be used in op names
 OP_MAP = {
