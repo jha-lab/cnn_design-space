@@ -92,7 +92,7 @@ def num_edges(matrix):
   return np.sum(matrix)
 
 
-def hash_module(matrix, labeling, algo):
+def hash_module(matrix, labeling, algo='md5'):
   """Computes a graph-invariance MD5 hash of the matrix and label pair.
 
   Args:

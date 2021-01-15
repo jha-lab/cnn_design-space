@@ -44,7 +44,7 @@ def conv_bn_relu(inputs, conv_size, conv_filters, is_training, data_format):
       filters=conv_filters, 
       kernel_size=conv_size,
       strides=(1, 1),
-      use_bias=False, # TODO: check for bias in popular CNNs
+      use_bias=True,
       kernel_initializer='glorot_uniform',
       padding='same',
       data_format=data_format)(inputs)
@@ -73,7 +73,7 @@ def conv_bn_leaky_relu(inputs, conv_size, conv_filters, is_training, data_format
       filters=conv_filters, 
       kernel_size=conv_size,
       strides=(1, 1),
-      use_bias=False, # TODO: check for bias in popular CNNs
+      use_bias=True, 
       kernel_initializer='glorot_uniform',
       padding='same',
       data_format=data_format)(inputs)
@@ -105,7 +105,7 @@ def conv_dil_bn_relu(inputs, conv_size, conv_filters, dilation_rate=2, is_traini
       kernel_size=conv_size,
       strides=(1, 1),
       dilation_rate=dilation_rate,
-      use_bias=False, # TODO: check for bias in popular CNNs
+      use_bias=True, 
       kernel_initializer='glorot_uniform',
       padding='same',
       data_format=data_format)(inputs)
@@ -137,7 +137,7 @@ def conv_dep_bn_relu(inputs, conv_size, conv_filters, is_training, data_format):
       kernel_size=conv_size,
       strides=(1, 1),
       dilation_rate=dilation_rate,
-      use_bias=False, # TODO: check for bias in popular CNNs
+      use_bias=True, 
       depthwise_initializer='glorot_uniform',
       pointwise_initializer='glorot_uniform',
       depth_multiplier=1, # TODO: check for depth_multiplier in popular CNNs
@@ -169,7 +169,7 @@ def conv_gr_bn_relu(inputs, conv_size, conv_filters, groups, is_training, data_f
       kernel_size=conv_size,
       groups=groups,
       strides=(1, 1),
-      use_bias=False, # TODO: check for bias in popular CNNs
+      use_bias=True, 
       kernel_initializer='glorot_uniform',
       padding='same',
       data_format=data_format)(inputs)
@@ -200,7 +200,7 @@ def conv_3D_bn_relu(inputs, conv_size, conv_filters, is_training, data_format):
       filters=conv_filters, 
       kernel_size=conv_size, # an integer or a tuple/list: (depth, height, width)
       strides=(1, 1, 1),
-      use_bias=False, # TODO: check for bias in popular CNNs
+      use_bias=True,
       kernel_initializer='glorot_uniform',
       padding='valid',
       data_format=data_format)(inputs)
@@ -229,7 +229,7 @@ def conv_tr_bn_relu(inputs, conv_size, conv_filters, is_training, data_format):
       filters=conv_filters, 
       kernel_size=conv_size,
       strides=(1, 1),
-      use_bias=False, # TODO: check for bias in popular CNNs
+      use_bias=True, 
       kernel_initializer='glorot_uniform',
       padding='valid', # TODO: check for padding in popular CNNs, might need to use padding before this layer
       data_format=data_format)(inputs)
