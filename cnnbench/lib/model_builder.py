@@ -100,7 +100,7 @@ def build_model_fn(spec, config, num_train_images):
       # compute the loss or anything dependent on it (i.e., the gradients).
       loss = tf.constant(0.0)
     else:
-      loss = tf.compat.v1.losses.softmax_cross_entropy(
+      loss = tf.compat.v1.losses.softmax_cross_entropy( # TODO: add support for other loss functions
           onehot_labels=tf.one_hot(labels, config['num_labels']),
           logits=logits)
 
@@ -201,7 +201,7 @@ def build_model_fn(spec, config, num_train_images):
       # Set LR to 0 for step 0 to initialize the weights without training
       learning_rate = tf.compat.v1.where(tf.equal(global_step, 0), 0.0, learning_rate)
 
-      optimizer = tf.compat.v1.train.RMSPropOptimizer(
+      optimizer = tf.compat.v1.train.RMSPropOptimizer( #TODO: add support for other optimizers
           learning_rate=learning_rate,
           momentum=config['momentum'],
           epsilon=1.0)
