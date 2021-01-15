@@ -245,13 +245,20 @@ def conv_tr_bn_relu(inputs, conv_size, conv_filters, is_training, data_format):
   return net
 
 
-def channel_shuffle(x, groups):  
-    _, width, height, channels = x.shape
-    group_ch = channels // groups
-
-    x = tf.rkeras.layers.Reshape([width, height, group_ch, groups])(x)
-    x = tf.keras.layers.Permute([1, 2, 4, 3])(x)
-    x = tf.keras.layers.Reshape([width, height, channels])(x)
+def channel_shuffle(x, groups, data_format):  
+    if data_format == 'channels_last':
+      _, height, width, channels = x.shape
+      group_ch = channels // groups
+      x = tf.keras.layers.Reshape([height, width, group_ch, groups])(x)
+      x = tf.keras.layers.Permute([1, 2, 4, 3])(x)
+      x = tf.keras.layers.Reshape([height, width, channels])(x)
+    else:
+      _, channels, height, width = x.shape
+      group_ch = channels // groups
+      x = tf.keras.layers.Reshape([group_ch, groups, height, width])(x)
+      x = tf.keras.layers.Permute([2, 1, 3, 4])(x)
+      x = tf.keras.layers.Reshape([channels, height, width])(x)
+      
     return x
 
 
