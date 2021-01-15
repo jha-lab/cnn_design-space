@@ -91,7 +91,7 @@ def build_model_fn(spec, config, num_train_images):
 
     # Fully-connected layer to labels
     logits = tf.keras.layers.Dense(
-        units=config['num_labels'])(net)
+        units=config['num_labels'])(net) # TODO: add support for more layers and activations
 
     if mode == tf.estimator.ModeKeys.PREDICT and not config['use_tpu']:
       # It is a known limitation of Estimator that the labels
