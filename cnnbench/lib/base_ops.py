@@ -389,6 +389,7 @@ class GobalAvgPool(BaseOp):
 
     return net
 
+
 class Flatten(BaseOp):
   """global average pool with no subsampling."""
 
@@ -532,7 +533,7 @@ class Conv7x7BnRelu_F64_S2(BaseOp):
 
     return net
 
-
+# conv2_x block
 class Conv1x1BnRelu_F64(BaseOp):
   """1x1 convolution with batch norm and ReLU activation."""
 
@@ -541,6 +542,509 @@ class Conv1x1BnRelu_F64(BaseOp):
         inputs, 1, 64, (1, 1), self.is_training, self.data_format)
 
     return net
+
+
+class Conv3x3BnRelu_F64(BaseOp):
+  """3x3 convolution with batch norm and ReLU activation."""
+
+  def build(self, inputs, channels):
+    net = conv_bn_relu(
+        inputs, 3, 64, (1, 1), self.is_training, self.data_format)
+
+    return net
+
+
+class Conv1x1BnRelu_F256(BaseOp):
+  """1x1 convolution with batch norm and ReLU activation."""
+
+  def build(self, inputs, channels):
+    net = conv_bn_relu(
+        inputs, 1, 256, (1, 1), self.is_training, self.data_format)
+
+    return net
+
+# conv3_x block
+# First downsampling CONV layer (left stream)
+class Conv1x1BnRelu_F128_S2(BaseOp):
+  """1x1 convolution with batch norm and ReLU activation."""
+
+  def build(self, inputs, channels):
+    net = conv_bn_relu(
+        inputs, 1, 128, (2, 2), self.is_training, self.data_format)
+
+    return net
+
+
+class Conv3x3BnRelu_F128(BaseOp):
+  """3x3 convolution with batch norm and ReLU activation."""
+
+  def build(self, inputs, channels):
+    net = conv_bn_relu(
+        inputs, 3, 128, (1, 1), self.is_training, self.data_format)
+
+    return net
+
+
+class Conv1x1BnRelu_F512(BaseOp):
+  """1x1 convolution with batch norm and ReLU activation."""
+
+  def build(self, inputs, channels):
+    net = conv_bn_relu(
+        inputs, 1, 512, (1, 1), self.is_training, self.data_format)
+
+    return net
+
+# 512-dimentional projection shortcut (right stream)
+class Conv1x1BnRelu_F512_S2(BaseOp):
+  """1x1 convolution with batch norm and ReLU activation."""
+
+  def build(self, inputs, channels):
+    net = conv_bn_relu(
+        inputs, 1, 512, (2, 2), self.is_training, self.data_format)
+
+    return net
+
+# conv4_x block
+# First downsampling CONV layer (left stream)
+class Conv1x1BnRelu_F256_S2(BaseOp):
+  """1x1 convolution with batch norm and ReLU activation."""
+
+  def build(self, inputs, channels):
+    net = conv_bn_relu(
+        inputs, 1, 256, (2, 2), self.is_training, self.data_format)
+
+    return net
+
+
+class Conv3x3BnRelu_F256(BaseOp):
+  """3x3 convolution with batch norm and ReLU activation."""
+
+  def build(self, inputs, channels):
+    net = conv_bn_relu(
+        inputs, 3, 256, (1, 1), self.is_training, self.data_format)
+
+    return net
+
+
+class Conv1x1BnRelu_F1024(BaseOp):
+  """1x1 convolution with batch norm and ReLU activation."""
+
+  def build(self, inputs, channels):
+    net = conv_bn_relu(
+        inputs, 1, 1024, (1, 1), self.is_training, self.data_format)
+
+    return net
+
+# 1024-dimentional projection shortcut (right stream)
+class Conv1x1BnRelu_F1024_S2(BaseOp):
+  """1x1 convolution with batch norm and ReLU activation."""
+
+  def build(self, inputs, channels):
+    net = conv_bn_relu(
+        inputs, 1, 1024, (2, 2), self.is_training, self.data_format)
+
+    return net
+
+# conv5_x block
+# First downsampling CONV layer (left stream)
+# class Conv1x1BnRelu_F512_S2(BaseOp)
+
+
+class Conv3x3BnRelu_F512(BaseOp):
+  """3x3 convolution with batch norm and ReLU activation."""
+
+  def build(self, inputs, channels):
+    net = conv_bn_relu(
+        inputs, 3, 512, (1, 1), self.is_training, self.data_format)
+
+    return net
+
+
+class Conv1x1BnRelu_F2048(BaseOp):
+  """1x1 convolution with batch norm and ReLU activation."""
+
+  def build(self, inputs, channels):
+    net = conv_bn_relu(
+        inputs, 1, 2048, (1, 1), self.is_training, self.data_format)
+
+    return net
+
+# 2048-dimentional projection shortcut (right stream)
+class Conv1x1BnRelu_F2048_S2(BaseOp):
+  """1x1 convolution with batch norm and ReLU activation."""
+
+  def build(self, inputs, channels):
+    net = conv_bn_relu(
+        inputs, 1, 2048, (2, 2), self.is_training, self.data_format)
+
+    return net
+
+
+## Base operations for DenseNet-121
+# class Conv7x7BnRelu_F64_S2(BaseOp)
+
+# class MaxPool3x3_S2(BaseOp)
+
+# dense block
+class Conv1x1BnRelu_F128(BaseOp):
+  """1x1 convolution with batch norm and ReLU activation."""
+
+  def build(self, inputs, channels):
+    net = conv_bn_relu(
+        inputs, 1, 128, (1, 1), self.is_training, self.data_format)
+
+    return net
+
+
+class Conv3x3BnRelu_F32(BaseOp):
+  """3x3 convolution with batch norm and ReLU activation."""
+
+  def build(self, inputs, channels):
+    net = conv_bn_relu(
+        inputs, 3, 512, (1, 1), self.is_training, self.data_format)
+
+    return net
+
+# transition block (80 filters for k=32 and theta=0.5)
+class Conv1x1BnRelu_F80(BaseOp):
+  """1x1 convolution with batch norm and ReLU activation."""
+
+  def build(self, inputs, channels):
+    net = conv_bn_relu(
+        inputs, 1, 80, (1, 1), self.is_training, self.data_format)
+
+    return net
+
+
+class AvgPool2x2_S2(BaseOp):
+  """2x2 average pool with no subsampling."""
+
+  def build(self, inputs, channels):
+    del channels    # Unused
+    net = tf.keras.layers.AveragePooling2D(
+        pool_size=(2, 2),
+        strides=(2, 2),
+        padding='same',
+        data_format=self.data_format)(inputs)
+
+    return net
+
+
+## Base operations for GoogLeNet
+# class Conv7x7BnRelu_F64_S2(BaseOp)
+
+# class MaxPool3x3_S2(BaseOp)
+
+# class Conv1x1BnRelu_F64(BaseOp)
+
+class Conv3x3BnRelu_F192(BaseOp):
+  """3x3 convolution with batch norm and ReLU activation."""
+
+  def build(self, inputs, channels):
+    net = conv_bn_relu(
+        inputs, 3, 192, (1, 1), self.is_training, self.data_format)
+
+    return net
+
+# inception (3a)
+# class Conv1x1BnRelu_F64(BaseOp)
+
+class Conv1x1BnRelu_F96(BaseOp):
+  """1x1 convolution with batch norm and ReLU activation."""
+
+  def build(self, inputs, channels):
+    net = conv_bn_relu(
+        inputs, 1, 96, (1, 1), self.is_training, self.data_format)
+
+    return net
+
+# class Conv3x3BnRelu_F128(BaseOp)
+
+class Conv1x1BnRelu_F16(BaseOp):
+  """1x1 convolution with batch norm and ReLU activation."""
+
+  def build(self, inputs, channels):
+    net = conv_bn_relu(
+        inputs, 1, 16, (1, 1), self.is_training, self.data_format)
+
+    return net
+
+
+class Conv5x5BnRelu_F32(BaseOp):
+  """5x5 convolution with batch norm and ReLU activation."""
+
+  def build(self, inputs, channels):
+    net = conv_bn_relu(
+        inputs, 5, 32, (1, 1), self.is_training, self.data_format)
+
+    return net
+
+# MaxPool3x3(BaseOp)
+
+class Conv1x1BnRelu_F32(BaseOp):
+  """1x1 convolution with batch norm and ReLU activation."""
+
+  def build(self, inputs, channels):
+    net = conv_bn_relu(
+        inputs, 1, 32, (1, 1), self.is_training, self.data_format)
+
+    return net
+
+
+# inception (3b)
+# class Conv1x1BnRelu_F128(BaseOp)
+
+# class Conv1x1BnRelu_F128(BaseOp)
+
+class Conv3x3BnRelu_F192(BaseOp):
+  """3x3 convolution with batch norm and ReLU activation."""
+
+  def build(self, inputs, channels):
+    net = conv_bn_relu(
+        inputs, 3, 192, (1, 1), self.is_training, self.data_format)
+
+    return net
+
+# class Conv1x1BnRelu_F32(BaseOp)
+
+class Conv5x5BnRelu_F96(BaseOp):
+  """5x5 convolution with batch norm and ReLU activation."""
+
+  def build(self, inputs, channels):
+    net = conv_bn_relu(
+        inputs, 5, 96, (1, 1), self.is_training, self.data_format)
+
+    return net
+
+# MaxPool3x3(BaseOp)
+
+# class Conv1x1BnRelu_F64(BaseOp)
+
+
+# inception (4a)
+# class Conv1x1BnRelu_F192(BaseOp)
+
+# class Conv1x1BnRelu_F96(BaseOp)
+
+class Conv3x3BnRelu_F208(BaseOp):
+  """3x3 convolution with batch norm and ReLU activation."""
+
+  def build(self, inputs, channels):
+    net = conv_bn_relu(
+        inputs, 3, 208, (1, 1), self.is_training, self.data_format)
+
+    return net
+
+# class Conv1x1BnRelu_F16(BaseOp)
+
+class Conv5x5BnRelu_F48(BaseOp):
+  """5x5 convolution with batch norm and ReLU activation."""
+
+  def build(self, inputs, channels):
+    net = conv_bn_relu(
+        inputs, 5, 48, (1, 1), self.is_training, self.data_format)
+
+    return net
+
+# MaxPool3x3(BaseOp)
+
+# class Conv1x1BnRelu_F64(BaseOp)
+
+
+# inception (4b)
+class Conv1x1BnRelu_F160(BaseOp):
+  """1x1 convolution with batch norm and ReLU activation."""
+
+  def build(self, inputs, channels):
+    net = conv_bn_relu(
+        inputs, 1, 160, (1, 1), self.is_training, self.data_format)
+
+    return net
+
+
+class Conv1x1BnRelu_F112(BaseOp):
+  """1x1 convolution with batch norm and ReLU activation."""
+
+  def build(self, inputs, channels):
+    net = conv_bn_relu(
+        inputs, 1, 112, (1, 1), self.is_training, self.data_format)
+
+    return net
+
+
+class Conv3x3BnRelu_F224(BaseOp):
+  """3x3 convolution with batch norm and ReLU activation."""
+
+  def build(self, inputs, channels):
+    net = conv_bn_relu(
+        inputs, 3, 224, (1, 1), self.is_training, self.data_format)
+
+    return net
+
+
+class Conv1x1BnRelu_F24(BaseOp):
+  """1x1 convolution with batch norm and ReLU activation."""
+
+  def build(self, inputs, channels):
+    net = conv_bn_relu(
+        inputs, 1, 24, (1, 1), self.is_training, self.data_format)
+
+    return net
+
+
+class Conv5x5BnRelu_F64(BaseOp):
+  """5x5 convolution with batch norm and ReLU activation."""
+
+  def build(self, inputs, channels):
+    net = conv_bn_relu(
+        inputs, 5, 64, (1, 1), self.is_training, self.data_format)
+
+    return net
+
+# MaxPool3x3(BaseOp)
+
+# class Conv1x1BnRelu_F64(BaseOp)
+
+
+# inception (4c)
+# class Conv1x1BnRelu_F128(BaseOp)
+
+# class Conv1x1BnRelu_F128(BaseOp)
+
+# class Conv3x3BnRelu_F256(BaseOp)
+
+# class Conv1x1BnRelu_F24(BaseOp)
+
+# class Conv5x5BnRelu_F64(BaseOp)
+
+# MaxPool3x3(BaseOp)
+
+# class Conv1x1BnRelu_F64(BaseOp)
+
+
+# inception (4d)
+class Conv1x1BnRelu_F112(BaseOp):
+  """1x1 convolution with batch norm and ReLU activation."""
+
+  def build(self, inputs, channels):
+    net = conv_bn_relu(
+        inputs, 1, 112, (1, 1), self.is_training, self.data_format)
+
+    return net
+
+
+class Conv1x1BnRelu_F144(BaseOp):
+  """1x1 convolution with batch norm and ReLU activation."""
+
+  def build(self, inputs, channels):
+    net = conv_bn_relu(
+        inputs, 1, 144, (1, 1), self.is_training, self.data_format)
+
+    return net
+
+
+class Conv3x3BnRelu_F288(BaseOp):
+  """3x3 convolution with batch norm and ReLU activation."""
+
+  def build(self, inputs, channels):
+    net = conv_bn_relu(
+        inputs, 3, 288, (1, 1), self.is_training, self.data_format)
+
+    return net
+
+# class Conv1x1BnRelu_F32(BaseOp)
+
+# class Conv5x5BnRelu_F64(BaseOp)
+
+# MaxPool3x3(BaseOp)
+
+# class Conv1x1BnRelu_F64(BaseOp)
+
+
+# inception (4e) and (5a)
+# class Conv1x1BnRelu_F256(BaseOp)
+
+# class Conv1x1BnRelu_F160(BaseOp)
+
+class Conv3x3BnRelu_F320(BaseOp):
+  """3x3 convolution with batch norm and ReLU activation."""
+
+  def build(self, inputs, channels):
+    net = conv_bn_relu(
+        inputs, 3, 320, (1, 1), self.is_training, self.data_format)
+
+    return net
+
+# class Conv1x1BnRelu_F32(BaseOp)
+
+class Conv5x5BnRelu_F128(BaseOp):
+  """5x5 convolution with batch norm and ReLU activation."""
+
+  def build(self, inputs, channels):
+    net = conv_bn_relu(
+        inputs, 5, 128, (1, 1), self.is_training, self.data_format)
+
+    return net
+
+# MaxPool3x3(BaseOp)
+
+# class Conv1x1BnRelu_F128(BaseOp)
+
+
+# inception (5b)
+class Conv1x1BnRelu_F384(BaseOp):
+  """1x1 convolution with batch norm and ReLU activation."""
+
+  def build(self, inputs, channels):
+    net = conv_bn_relu(
+        inputs, 1, 384, (1, 1), self.is_training, self.data_format)
+
+    return net
+
+# class Conv1x1BnRelu_F192(BaseOp)
+
+# class Conv3x3BnRelu_F384(BaseOp)
+
+class Conv1x1BnRelu_F48(BaseOp):
+  """1x1 convolution with batch norm and ReLU activation."""
+
+  def build(self, inputs, channels):
+    net = conv_bn_relu(
+        inputs, 1, 49, (1, 1), self.is_training, self.data_format)
+
+    return net
+
+# class Conv5x5BnRelu_F128(BaseOp)
+
+# MaxPool3x3(BaseOp)
+
+# class Conv1x1BnRelu_F128(BaseOp)
+
+class AvgPool7x7(BaseOp):
+  """2x2 average pool with no subsampling."""
+
+  def build(self, inputs, channels):
+    del channels    # Unused
+    net = tf.keras.layers.AveragePooling2D(
+        pool_size=(7, 7),
+        strides=(1, 1),
+        padding='same',
+        data_format=self.data_format)(inputs)
+
+    return net
+
+
+## Base operations for MobileNet
+class Conv3x3BnRelu_F32_S2(BaseOp):
+  """3x3 convolution with batch norm and ReLU activation."""
+
+  def build(self, inputs, channels):
+    net = conv_bn_relu(
+        inputs, 3, 32, (2, 2), self.is_training, self.data_format)
+
+    return net
+
+
 
 # Commas should not be used in op names
 OP_MAP = {
