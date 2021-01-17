@@ -1353,7 +1353,18 @@ class Conv3x3BnRelu_F6(BaseOp):
 
     return net
 
-# class AvgPool3x3(BaseOp)
+class AvgPool2x2(BaseOp):
+  """3x3 average pool with no subsampling."""
+
+  def build(self, inputs, channels):
+    del channels    # Unused
+    net = tf.keras.layers.AveragePooling2D(
+        pool_size=(2, 2),
+        strides=(1, 1),
+        padding='same',
+        data_format=self.data_format)(inputs)
+
+    return net
 
 class Conv3x3BnRelu_F16(BaseOp):
   """1x1 convolution with batch norm and ReLU activation."""
@@ -1364,7 +1375,7 @@ class Conv3x3BnRelu_F16(BaseOp):
 
     return net
 
-# class AvgPool3x3(BaseOp)
+# class AvgPool2x2(BaseOp)
 
 # Commas should not be used in op names
 OP_MAP = {
