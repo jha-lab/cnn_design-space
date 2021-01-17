@@ -1342,6 +1342,30 @@ class MaxPool2x2_S2(BaseOp):
 
 # class Conv3x3BnRelu_F512(BaseOp)
 
+
+## Base operations for LeNet
+class Conv3x3BnRelu_F6(BaseOp):
+  """1x1 convolution with batch norm and ReLU activation."""
+
+  def build(self, inputs, channels):
+    net = conv_bn_relu(
+        inputs, 3, 6, (1, 1), self.is_training, self.data_format)
+
+    return net
+
+# class AvgPool3x3(BaseOp)
+
+class Conv3x3BnRelu_F16(BaseOp):
+  """1x1 convolution with batch norm and ReLU activation."""
+
+  def build(self, inputs, channels):
+    net = conv_bn_relu(
+        inputs, 3, 16, (1, 1), self.is_training, self.data_format)
+
+    return net
+
+# class AvgPool3x3(BaseOp)
+
 # Commas should not be used in op names
 OP_MAP = {
     'identity': Identity,
