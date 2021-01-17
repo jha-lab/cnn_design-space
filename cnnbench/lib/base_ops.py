@@ -121,7 +121,7 @@ def conv_dil_bn_relu(inputs, conv_size, conv_filters, strides, dilation_rate=2, 
   return net  
 
 
-def conv_dep_bn_relu(inputs, conv_size, conv_filters, strides, is_training, data_format):
+def conv_dep_bn_relu(inputs, conv_size, strides, is_training, data_format):
   """Depthwise Convolution followed by batch norm and ReLU."""
   if data_format == 'channels_last':
     axis = 3
@@ -130,17 +130,11 @@ def conv_dep_bn_relu(inputs, conv_size, conv_filters, strides, is_training, data
   else:
     raise ValueError('invalid data_format')
 
-  assert dilation_rate >= 2, 'Dilation rate must be greater than 1. Else use conv_bn_relu()'
-
-  net = tf.keras.layers.SeparableConv2D(
-      filters=conv_filters, 
+  net = tf.keras.layers.DepthwiseConv2D(
       kernel_size=conv_size,
       strides=strides,
-      dilation_rate=dilation_rate,
       use_bias=False, # bias already taken into account by batch-norm 
       depthwise_initializer='glorot_uniform',
-      pointwise_initializer='glorot_uniform',
-      depth_multiplier=1, # TODO: check for depth_multiplier in popular CNNs
       padding='same',
       data_format=data_format)(inputs)
 
@@ -254,6 +248,7 @@ def channel_shuffle(x, groups, data_format='channels_last'):
       x = tf.keras.layers.Permute([1, 2, 4, 3])(x)
       x = tf.keras.layers.Reshape([height, width, channels])(x)
     else:
+      # TODO: check code for 'channels_first'
       _, channels, height, width = x.shape
       group_ch = channels // groups
       x = tf.keras.layers.Reshape([group_ch, groups, height, width])(x)
@@ -822,7 +817,14 @@ class Conv5x5BnRelu_F96(BaseOp):
 
 
 # inception (4a)
-# class Conv1x1BnRelu_F192(BaseOp)
+class Conv1x1BnRelu_F192(BaseOp):
+  """1x1 convolution with batch norm and ReLU activation."""
+
+  def build(self, inputs, channels):
+    net = conv_bn_relu(
+        inputs, 1, 192, (1, 1), self.is_training, self.data_format)
+
+    return net
 
 # class Conv1x1BnRelu_F96(BaseOp)
 
@@ -1045,6 +1047,300 @@ class Conv3x3BnRelu_F32_S2(BaseOp):
     return net
 
 
+class DepthwiseConv3x3BnRelu(BaseOp):
+  """3x3 depthwise-convolution with batch norm and ReLU activation."""
+
+  def build(self, inputs, channels):
+    net = conv_dep_bn_relu(
+        inputs, 3, (1, 1), self.is_training, self.data_format)
+
+    return net
+
+# class Conv1x1BnRelu_F64(BaseOp)
+
+class DepthwiseConv3x3BnRelu_S2(BaseOp):
+  """3x3 depthwise-convolution with batch norm and ReLU activation."""
+
+  def build(self, inputs, channels):
+    net = conv_dep_bn_relu(
+        inputs, 3, (2, 2), self.is_training, self.data_format)
+
+    return net
+
+# class Conv1x1BnRelu_F128(BaseOp)
+
+# class DepthwiseConv3x3BnRelu(BaseOp)
+
+# class Conv1x1BnRelu_F128(BaseOp)
+
+# class DepthwiseConv3x3BnRelu_S2(BaseOp)
+
+# class Conv1x1BnRelu_256(BaseOp)
+
+# class DepthwiseConv3x3BnRelu(BaseOp)
+
+# class Conv1x1BnRelu_F256(BaseOp)
+
+# class DepthwiseConv3x3BnRelu_S2(BaseOp)
+
+# class Conv1x1BnRelu_F512(BaseOp)
+
+# class DepthwiseConv3x3BnRelu(BaseOp)
+
+# class Conv1x1BnRelu_F512(BaseOp)
+
+# class DepthwiseConv3x3BnRelu_S2(BaseOp)
+
+# class Conv1x1BnRelu_F1024(BaseOp)
+
+# class DepthwiseConv3x3BnRelu(BaseOp)
+
+# class Conv1x1BnRelu_F1024(BaseOp)
+
+# class AvgPool7x7(BaseOp)
+
+
+## Base operations for ShuffleNet (g=8)
+class Conv3x3BnRelu_F24_S2(BaseOp):
+  """3x3 convolution with batch norm and ReLU activation."""
+
+  def build(self, inputs, channels):
+    net = conv_bn_relu(
+        inputs, 3, 24, (2, 2), self.is_training, self.data_format)
+
+    return net
+
+
+class GroupedConv1x1BnRelu_G8_F96(BaseOp):
+  """1x1 grouped-convolution with batch norm and ReLU activation."""
+
+  def build(self, inputs, channels):
+    net = conv_gr_bn_relu(
+        inputs, 1, 96, (1, 1), 8, self.is_training, self.data_format)
+
+    return net
+
+
+class ChannelShuffle_G8(BaseOp):
+  """1x1 grouped-convolution with batch norm and ReLU activation."""
+
+  def build(self, inputs, channels):
+    net = channel_shuffle(
+        inputs, 8, self.data_format)
+
+    return net
+
+# class DepthwiseConv3x3BnRelu_S2(BaseOp)
+
+class GroupedConv1x1BnRelu_G8_F360(BaseOp):
+  """1x1 grouped-convolution with batch norm and ReLU activation."""
+
+  def build(self, inputs, channels):
+    net = conv_gr_bn_relu(
+        inputs, 1, 360, (1, 1), 8, self.is_training, self.data_format)
+
+    return net
+
+
+class GroupedConv1x1BnRelu_G8_F384(BaseOp):
+  """1x1 grouped-convolution with batch norm and ReLU activation."""
+
+  def build(self, inputs, channels):
+    net = conv_gr_bn_relu(
+        inputs, 1, 384, (1, 1), 8, self.is_training, self.data_format)
+
+    return net
+
+
+class AvgPool3x3_S2(BaseOp):
+  """3x3 average pool with no subsampling."""
+
+  def build(self, inputs, channels):
+    del channels    # Unused
+    net = tf.keras.layers.AveragePooling2D(
+        pool_size=(3, 3),
+        strides=(2, 2),
+        padding='same',
+        data_format=self.data_format)(inputs)
+
+    return net
+
+
+class GroupedConv1x1BnRelu_G8_F192(BaseOp):
+  """1x1 grouped-convolution with batch norm and ReLU activation."""
+
+  def build(self, inputs, channels):
+    net = conv_gr_bn_relu(
+        inputs, 1, 192, (1, 1), 8, self.is_training, self.data_format)
+
+    return net
+
+# class ChannelShuffle_G8(BaseOp)
+
+# class DepthwiseConv3x3BnRelu_S2(BaseOp)
+
+class GroupedConv1x1BnRelu_G8_F384(BaseOp):
+  """1x1 grouped-convolution with batch norm and ReLU activation."""
+
+  def build(self, inputs, channels):
+    net = conv_gr_bn_relu(
+        inputs, 1, 384, (1, 1), 8, self.is_training, self.data_format)
+
+    return net
+
+
+class GroupedConv1x1BnRelu_G8_F762(BaseOp):
+  """1x1 grouped-convolution with batch norm and ReLU activation."""
+
+  def build(self, inputs, channels):
+    net = conv_gr_bn_relu(
+        inputs, 1, 762, (1, 1), 8, self.is_training, self.data_format)
+
+    return net
+
+# class AvgPool3x3_S2(BaseOp)
+
+# class GroupedConv1x1BnRelu_G8_F384(BaseOp)
+
+# class ChannelShuffle_G8(BaseOp)
+
+# class DepthwiseConv3x3BnRelu_S2(BaseOp)
+
+# class GroupedConv1x1BnRelu_G8_F762(BaseOp)
+
+class GroupedConv1x1BnRelu_G8_F1536(BaseOp):
+  """1x1 grouped-convolution with batch norm and ReLU activation."""
+
+  def build(self, inputs, channels):
+    net = conv_gr_bn_relu(
+        inputs, 1, 1536, (1, 1), 8, self.is_training, self.data_format)
+
+    return net
+
+# class AvgPool3x3_S2(BaseOp)
+
+
+## Base operations for Xception
+"""We use combination of DepthwiseConvBnRelu and Conv1x1BnRelu
+as a substitute to the SeparableConv used in the paper"""
+# class Conv3x3BnRelu_F32_S2(BaseOp)
+
+# class Conv3x3BnRelu_F64(BaseOp)
+
+# class DepthwiseConv3x3BnRelu(BaseOp)
+
+# class Conv1x1BnRelu_F128(BaseOp)
+
+# class MaxPool3x3_S2(BaseOp)
+
+# class Conv1x1BnRelu_F128_S2(BaseOp)
+
+# class DepthwiseConv3x3BnRelu(BaseOp)
+
+# class Conv1x1BnRelu_F256(BaseOp)
+
+# class DepthwiseConv3x3BnRelu(BaseOp)
+
+# class Conv1x1BnRelu_F256(BaseOp)
+
+# class MaxPool3x3_S2(BaseOp)
+
+# class Conv1x1BnRelu_F256_S2(BaseOp)
+
+# class DepthwiseConv3x3BnRelu(BaseOp)
+
+class Conv1x1BnRelu_F728(BaseOp):
+  """1x1 convolution with batch norm and ReLU activation."""
+
+  def build(self, inputs, channels):
+    net = conv_bn_relu(
+        inputs, 1, 728, (1, 1), self.is_training, self.data_format)
+
+    return net
+
+# class DepthwiseConv3x3BnRelu(BaseOp)
+
+# class Conv1x1BnRelu_F728(BaseOp)
+
+# class MaxPool3x3_S2(BaseOp)
+
+# class Conv1x1BnRelu_F728(BaseOp)
+
+# middle_flow uses SeparableConv with 728 filters and 3x3 kernels
+
+class Conv1x1BnRelu_F1536(BaseOp):
+  """1x1 convolution with batch norm and ReLU activation."""
+
+  def build(self, inputs, channels):
+    net = conv_bn_relu(
+        inputs, 1, 1536, (1, 1), self.is_training, self.data_format)
+
+    return net
+
+# class Conv1x1BnRelu_F2048(BaseOp)
+
+
+## Base operations for SqueezeNet
+class Conv7x7BnRelu_F96(BaseOp):
+  """1x1 convolution with batch norm and ReLU activation."""
+
+  def build(self, inputs, channels):
+    net = conv_bn_relu(
+        inputs, 7, 96, (1, 1), self.is_training, self.data_format)
+
+    return net
+
+# class MaxPool3x3_S2(BaseOp)
+
+# class Conv1x1BnRelu_F16(BaseOp)
+
+# class Conv1x1BnRelu_F64(BaseOp)
+
+# class Conv3x3BnRelu_F64(BaseOp)
+
+# class Conv1x1BnRelu_F32(BaseOp)
+
+# class Conv1x1BnRelu_F128(BaseOp)
+
+# class Conv3x3BnRelu_F128(BaseOp)
+
+# class MaxPool3x3_S2(BaseOp)
+
+# class Conv1x1BnRelu_F48(BaseOp)
+
+# class Conv1x1BnRelu_F192(BaseOp)
+
+# class Conv3x3BnRelu_F192(BaseOp)
+
+# class Conv1x1BnRelu_F64(BaseOp)
+
+# class Conv1x1BnRelu_F256(BaseOp)
+
+# class Conv3x3BnRelu_F256(BaseOp)
+
+# class MaxPool3x3_S2(BaseOp)
+
+
+# Base operations for VGG
+# class Conv3x3BnRelu_F64(BaseOp)
+
+class MaxPool2x2_S2(BaseOp):
+  """2x2 max pool with no subsampling."""
+
+  def build(self, inputs, channels):
+    net = tf.keras.layers.MaxPool2D(
+        pool_size=(2, 2),
+        strides=(2, 2),
+        padding='same',
+        data_format=self.data_format)(inputs)
+
+    return net
+
+# class Conv3x3BnRelu_F256(BaseOp)
+
+# class MaxPool2x2_S2(BaseOp)
+
+# class Conv3x3BnRelu_F512(BaseOp)
 
 # Commas should not be used in op names
 OP_MAP = {
