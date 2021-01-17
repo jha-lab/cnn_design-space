@@ -87,5 +87,6 @@ You can directly run tests on the generated dataset using a Google Colaboratory 
 
 1. Save keras checkpoints.
 2. Add more basic operations into `base_ops.py`.
-3. Define popular networks in CNNBench framework.
-4. Graph generation in the expanded design space starting from clusters around popular networks.
+3. Expand model architecture - multiple matrix-label pairs, vertex add/concat options, FCNN options.
+4. Define popular networks in CNNBench framework.
+5. Graph generation in the expanded design space starting from clusters around popular networks.
