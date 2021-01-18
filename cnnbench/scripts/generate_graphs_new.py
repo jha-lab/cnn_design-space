@@ -195,6 +195,8 @@ def main(_):
   with tf.io.gfile.GFile(FLAGS.output_file, 'w') as f:
     json.dump(graph_buckets, f, sort_keys=True)
 
+  return total_graphs
+
 
 if __name__ == '__main__':
   app.run(main)
