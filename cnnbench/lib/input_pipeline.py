@@ -82,9 +82,10 @@ class dataset_input(object):
     Raises:
       ValueError: invalid mode or data files
     """
-    self.preset = DATASET_PRESETS.get(config['dataset'])
+    dataset = config['dataset']
+    self.preset = DATASET_PRESETS.get(dataset)
     if self.preset is None:
-      raise KeyError(f'Please add "{config['dataset']}" to {__name__}.DATASET_PRESETS"')
+      raise KeyError(f'Please add "{dataset}" to {__name__}.DATASET_PRESETS"')
 
     self.mode = mode
     self.config = config
