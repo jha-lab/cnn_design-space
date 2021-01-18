@@ -73,7 +73,7 @@ class dataset_input(object):
   """Wrapper class for input_fn passed to Estimator."""
 
   def __init__(self, mode, config):
-    """Initializes a CIFARInput object.
+    """Initializes a dataset_input object.
 
     Args:
       mode: one of [train, valid, test, augment, sample]
@@ -113,7 +113,7 @@ class dataset_input(object):
           split = self.split)))
 
   def input_fn(self, params):
-    """Returns a CIFAR tf.data.Dataset object.
+    """Returns a tf.data.Dataset object.
 
     Args:
       params: parameter dict pass by Estimator.
