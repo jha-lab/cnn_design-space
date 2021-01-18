@@ -53,7 +53,7 @@ flags.DEFINE_integer(
 
 # Search space parameters.
 flags.DEFINE_integer(
-    'module_vertices', 7,
+    'module_vertices', 2,
     'Number of vertices in module matrix, including input and output.')
 flags.DEFINE_integer(
     'max_edges', 9,
@@ -73,7 +73,7 @@ flags.DEFINE_integer(
 flags.DEFINE_integer(
     'batch_size', 256, 'Training batch size.')
 flags.DEFINE_integer(
-    'train_epochs', 108,
+    'train_epochs', 4,
     'Maximum training epochs. If --train_seconds is reached first, training'
     ' may not reach --train_epochs.')
 flags.DEFINE_float(
@@ -107,7 +107,7 @@ flags.DEFINE_integer(
 
 # TPU flags
 flags.DEFINE_bool(
-    'use_tpu', True, 'Use TPUs for train and evaluation.')
+    'use_tpu', False, 'Use TPUs for train and evaluation.')
 flags.DEFINE_integer(
     'tpu_iterations_per_loop', 100, 'Iterations per loop of TPU execution.')
 flags.DEFINE_integer(

@@ -76,7 +76,7 @@ import tensorflow as tf   # For gfile
 
 flags.DEFINE_string('output_file', '/tmp/generated_graphs.json',
                     'Output file name.')
-flags.DEFINE_integer('max_vertices', 7,
+flags.DEFINE_integer('max_vertices', 2,
                      'Maximum number of vertices including input/output.')
 flags.DEFINE_integer('num_ops', 3, 'Number of operation labels.')
 flags.DEFINE_integer('max_edges', 9, 'Maximum number of edges.')
