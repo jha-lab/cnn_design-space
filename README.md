@@ -1,6 +1,6 @@
 # CNNBench: A CNN Design-Space generation tool and benchmark
 
-![Python Version](https://img.shields.io/badge/python-v3.8-blue)
+![Python Version](https://img.shields.io/badge/python-v3.6%20%7C%20v3.7%20%7C%20v3.8-blue)
 ![Conda](https://img.shields.io/badge/conda%7Cconda--forge-v4.8.3-blue)
 ![Tensorflow](https://img.shields.io/badge/tensorflow--gpu-v2.2-orange)
 ![Commits Since Last Release](https://img.shields.io/github/commits-since/JHA-Lab/cnn_design-space/v0.1/main)
