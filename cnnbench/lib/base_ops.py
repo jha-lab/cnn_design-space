@@ -121,7 +121,7 @@ def conv_dil_bn_relu(inputs, conv_size, conv_filters, dilation_rate, is_training
   return net  
 
 
-def conv_dep_bn_relu(inputs, conv_size, conv_filters, is_training, data_format):
+def conv_dep_bn_relu(inputs, conv_size, conv_filters, dilation_rate, is_training, data_format):
   """Depthwise Convolution followed by batch norm and ReLU."""
   if data_format == 'channels_last':
     axis = 3
@@ -431,7 +431,7 @@ class MaxPool3x3Conv1x1(BaseOp):
         pool_size=(3, 3),
         strides=(1, 1),
         padding='same',
-        data_format=self.data_format)(ipnuts)
+        data_format=self.data_format)(inputs)
 
     net = conv_bn_relu(net, 1, channels, self.is_training, self.data_format)
 

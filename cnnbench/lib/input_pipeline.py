@@ -84,7 +84,7 @@ class dataset_input(object):
     """
     self.preset = DATASET_PRESETS.get(config['dataset'])
     if self.preset is None:
-      raise KeyError(f'Please add "{dataset}" to {__name__}.DATASET_PRESETS"')
+      raise KeyError(f'Please add "{config['dataset']}" to {__name__}.DATASET_PRESETS"')
 
     self.mode = mode
     self.config = config
