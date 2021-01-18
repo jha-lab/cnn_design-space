@@ -93,23 +93,27 @@ def num_edges(matrix):
 
 
 def hash_module(matrix, labeling, algo='md5'):
-  """Computes a graph-invariance MD5 hash of the matrix and label pair.
+  """Computes a graph-invariance hash of the matrix and label pair.
 
   Args:
     matrix: np.ndarray square upper-triangular adjacency matrix.
     labeling: list of int labels of length equal to both dimensions of
       matrix.
+    algo: hash algorithm among ["md5", "sha256", "sha512"]
 
   Returns:
-    MD5 hash of the matrix and labeling.
+    Hash of the matrix and labeling based on algo.
   """
   vertices = np.shape(matrix)[0]
   in_edges = np.sum(matrix, axis=0).tolist()
   out_edges = np.sum(matrix, axis=1).tolist()
 
+  def hash_algo(str):
+    return eval(f"hashlib.{algo}(str)")
+
   assert len(in_edges) == len(out_edges) == len(labeling)
   hashes = list(zip(out_edges, in_edges, labeling))
-  hashes = [eval(f"hashlib.{algo}(str(h).encode('utf-8')).hexdigest()") for h in hashes]
+  hashes = [hash_algo(str(h).encode('utf-8')).hexdigest() for h in hashes]
   # Computing this up to the diameter is probably sufficient but since the
   # operation is fast, it is okay to repeat more times.
   for _ in range(vertices):
@@ -117,12 +121,12 @@ def hash_module(matrix, labeling, algo='md5'):
     for v in range(vertices):
       in_neighbors = [hashes[w] for w in range(vertices) if matrix[w, v]]
       out_neighbors = [hashes[w] for w in range(vertices) if matrix[v, w]]
-      new_hashes.append(hashlib.md5(
+      new_hashes.append(hash_algo(
           (''.join(sorted(in_neighbors)) + '|' +
            ''.join(sorted(out_neighbors)) + '|' +
            hashes[v]).encode('utf-8')).hexdigest())
     hashes = new_hashes
-  fingerprint = hashlib.md5(str(sorted(hashes)).encode('utf-8')).hexdigest()
+  fingerprint = hash_algo(str(sorted(hashes)).encode('utf-8')).hexdigest()
 
   return fingerprint
 
