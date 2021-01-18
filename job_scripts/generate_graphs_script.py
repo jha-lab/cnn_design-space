@@ -23,14 +23,17 @@ FLAGS = flags.FLAGS
 # Those flag values define in command line take precedence
 FLAGS.max_vertices = 2
 
-# Parse flags before access
-FLAGS(sys.argv)
+def main(args):
+	del args 
 
-if not os.path.exists(f'../results/vertices_{FLAGS.max_vertices}'):
-    os.makedirs(f'../results/vertices_{FLAGS.max_vertices}')
+	if not os.path.exists(f'../results/vertices_{FLAGS.max_vertices}'):
+	    os.makedirs(f'../results/vertices_{FLAGS.max_vertices}')
 
-FLAGS.output_file = f'../results/vertices_{FLAGS.max_vertices}/generated_graphs.json'
+	FLAGS.output_file = f'../results/vertices_{FLAGS.max_vertices}/generated_graphs.json'
 
-# Generate graphs
-app.run(graph_generator)
+	# Generate graphs
+	app.run(graph_generator)
 
+
+if __name__ == '__main__':
+	app.run(main)
