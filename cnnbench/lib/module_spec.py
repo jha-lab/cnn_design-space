@@ -34,10 +34,10 @@ except ImportError:
   pass
 
 
-class ModelSpec(object):
-  """Model specification given adjacency matrix and labeling."""
+class ModuleSpec(object):
+  """Module specification given adjacency matrix and labeling."""
 
-  def __init__(self, matrix, ops, data_format='channels_last'):
+  def __init__(self, matrix, ops, hash_algo, data_format='channels_last'):
     """Initialize the module spec.
 
     Args:
@@ -70,6 +70,7 @@ class ModelSpec(object):
     self.matrix = copy.deepcopy(matrix)
     self.ops = copy.deepcopy(ops)
     self.valid_spec = True
+    self.hash_algo = hash_algo
     self._prune()
 
     self.data_format = data_format
@@ -137,7 +138,7 @@ class ModelSpec(object):
     """
     # Invert the operations back to integer label indices used in graph gen.
     labeling = [-1] + [canonical_ops.index(op) for op in self.ops[1:-1]] + [-2]
-    return graph_util.hash_module(self.matrix, labeling)
+    return graph_util.hash_module(self.matrix, labeling, self.hash_algo)
 
   def visualize(self):
     """Creates a dot graph. Can be visualized in colab directly."""

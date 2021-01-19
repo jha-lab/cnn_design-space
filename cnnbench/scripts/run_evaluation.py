@@ -49,10 +49,11 @@ import re
 
 from absl import app
 from absl import flags
+from absl import logging
 from cnnbench.lib import config as _config
 from cnnbench.lib import evaluate
-from cnnbench.lib import model_metrics_pb2
-from cnnbench.lib import model_spec
+from cnnbench.lib import module_spec
+from cnnbench.lib import print_util
 import numpy as np
 import tensorflow as tf
 import shutil
@@ -181,7 +182,7 @@ class Evaluator(object):
     labels = (['input'] +
               [self.config['available_ops'][lab] for lab in labels[1:-1]] +
               ['output'])
-    spec = model_spec.ModelSpec(matrix, labels)
+    spec = module_spec.ModuleSpec(matrix, labels, self.config['hash_algo'])
     assert spec.valid_spec
     assert np.sum(spec.matrix) <= self.config['max_edges']
 
@@ -223,12 +224,12 @@ class Evaluator(object):
           try:
             shutil.rmtree(full_filename)
           except:
-            print(f'Could not delete directory: {full_filename}')
+            logging.error(f'{print_util.bcolors.WARNING}Could not delete directory{print_util.bcolors.ENDC}: {full_filename}')
         else:
           try:
             tf.io.gfile.remove(full_filename)
           except:
-            print(f'Could not delete file: {full_filename}')
+            logging.error(f'{print_util.bcolors.WARNING}Could not delete file{print_util.bcolors.ENDC}: {full_filename}')
 
 
 def main(args):

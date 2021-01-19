@@ -6,16 +6,20 @@ import sys
 if '../' not in sys.path:
 	sys.path.append('../')
 
-# Do not show warnings of deprecated functions
 import os
 import tensorflow as tf
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
-tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)  # or any {DEBUG, INFO, WARN, ERROR, FATAL} 
 
+from absl import logging 
 from absl import flags
 from absl import app
 
 from cnnbench.scripts.generate_graphs import main as graph_generator
+
+# Do not show warnings of deprecated functions
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+logging.get_absl_handler().setFormatter(None)
+logging.set_verbosity(logging.ERROR)  # or any {DEBUG, INFO, WARN, ERROR, FATAL} 
+
 
 FLAGS = flags.FLAGS
 
