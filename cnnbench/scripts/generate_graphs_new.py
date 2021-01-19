@@ -19,7 +19,7 @@ vertices and edges. Computational graphs can be represented by directed acyclic
 graphs with all components connected along some path from a specially-labeled
 input to output. The pseudocode for generating these is:
 
-for V in [2, ..., MAX_VERTICES]:    # V includes input and output vertices
+for V in [2, ..., module_vertices]:    # V includes input and output vertices
   generate all bitmasks of length V*(V-1)/2   # num upper triangular entries
   for each bitmask:
     convert bitmask to adjacency matrix
@@ -75,41 +75,36 @@ if '../../' not in sys.path:
   sys.path.append('../../')
 
 from cnnbench.lib import graph_util
+from cnnbench.lib import print_util
+from cnnbench.lib import config as _config
 import numpy as np
 import tensorflow as tf   # For gfile
 
 flags.DEFINE_string('output_file', '/tmp/generated_graphs.json',
                     'Output file name.')
-flags.DEFINE_integer('max_vertices', 2,
-                     'Maximum number of vertices including input/output.')
+# flags.DEFINE_integer('max_vertices', 2,
+#                      'Maximum number of vertices including input/output.')
 flags.DEFINE_integer('num_ops', 3, 'Number of operation labels.')
-flags.DEFINE_integer('max_edges', 9, 'Maximum number of edges.')
+# flags.DEFINE_integer('max_edges', 9, 'Maximum number of edges.')
 flags.DEFINE_boolean('verify_isomorphism', True,
                      'Exhaustively verifies that each detected isomorphism'
                      ' is truly an isomorphism. This operation is very'
                      ' expensive.')
-flags.DEFINE_string('hash_algo', 'md5', 'Hash algorithm used among'
-                    ' ["md5", "sha256", "sha512"]')
+# flags.DEFINE_string('hash_algo', 'md5', 'Hash algorithm used among'
+#                     ' ["md5", "sha256", "sha512"]')
 flags.DEFINE_integer('max_modules', 1, 'Maximum number of modules comprising of'
                     ' pairs of adjacency matrices and operation labels')
+
 FLAGS = flags.FLAGS
 
-class bcolors:
-  HEADER = '\033[95m'
-  OKBLUE = '\033[94m'
-  OKCYAN = '\033[96m'
-  OKGREEN = '\033[92m'
-  WARNING = '\033[93m'
-  FAIL = '\033[91m'
-  ENDC = '\033[0m'
-  BOLD = '\033[1m'
-  UNDERLINE = '\033[4m'
 
 def hash_algo(str):
   return eval(f"hashlib.{FLAGS.hash_algo}(str)")
 
 
 def main(_):
+  config = _config.build_config()
+
   total_modules = 0    # Total number of modules (including isomorphisms)
   total_graphs = 0    # Total number of graphs (including isomorphisms)
 
@@ -118,11 +113,11 @@ def main(_):
   graph_buckets = {}
 
   logging.get_absl_handler().setFormatter(None)
-  logging.info(f'{bcolors.HEADER}Generating modules{bcolors.ENDC}')
-  logging.info(f'{bcolors.HEADER}Using {FLAGS.max_vertices} vertices, {FLAGS.num_ops} op labels, max {FLAGS.max_edges} edges{bcolors.ENDC}')
+  logging.info(f'{print_util.bcolors.HEADER}Generating modules{print_util.bcolors.ENDC}')
+  logging.info(f'{print_util.bcolors.HEADER}Using {FLAGS.module_vertices} vertices, {FLAGS.num_ops} op labels, max {FLAGS.max_edges} edges{print_util.bcolors.ENDC}')
 
   # Generate all possible martix-label pairs (or modules)
-  for vertices in range(2, FLAGS.max_vertices+1):
+  for vertices in range(2, FLAGS.module_vertices+1):
     for bits in range(2 ** (vertices * (vertices-1) // 2)):
       # Construct adj matrix from bit string
       matrix = np.fromfunction(graph_util.gen_is_edge_fn(bits),
@@ -161,36 +156,54 @@ def main(_):
                  vertices, len(module_buckets), total_modules)
 
   logging.info('')
-  logging.info(f'{bcolors.HEADER}Generating graphs{bcolors.ENDC}')
-  logging.info(f'{bcolors.HEADER}Using max {FLAGS.max_modules} modules{bcolors.ENDC}')
+  logging.info(f'{print_util.bcolors.HEADER}Generating graphs{print_util.bcolors.ENDC}')
 
   # Generate graphs using modules
-  for modules in range(1, FLAGS.max_modules+1):
-    for module_fingerprints in itertools.product(*[module_buckets.keys()
-                                                for _ in range(modules)]): 
+  # Permute over modules to generate graphs with upto FLAGS.max_modules
+  if not config['run_nasbench']:
+    logging.info(f'{print_util.bcolors.HEADER}Using max {FLAGS.max_modules} modules{print_util.bcolors.ENDC}')
+    for modules in range(1, FLAGS.max_modules+1):
+      for module_fingerprints in itertools.product(*[module_buckets.keys()
+                                                  for _ in range(modules)]): 
 
-      total_graphs += 1
-      graph_fingerprint = hash_algo('|'.join(module_fingerprints).encode('utf-8')).hexdigest()
+        total_graphs += 1
+        graph_fingerprint = hash_algo('|'.join(module_fingerprints).encode('utf-8')).hexdigest()
 
-      if graph_fingerprint not in graph_buckets:
-        graph_buckets[graph_fingerprint] = [module_buckets[fingerprint] for fingerprint in module_fingerprints]
+        if graph_fingerprint not in graph_buckets:
+          graph_buckets[graph_fingerprint] = [module_buckets[fingerprint] for fingerprint in module_fingerprints]
 
-      # Graph-level isomorphism check -
-      # This catches the "false positive" case of two graphs which are not isomorphic
-      elif FLAGS.verify_isomorphism:
-        logging.fatal(f'Two graphs found with same hash: {graph_fingerprint}')
+        # Graph-level isomorphism check -
+        # This catches the "false positive" case of two graphs which are not isomorphic
+        elif FLAGS.verify_isomorphism:
+          logging.fatal(f'Two graphs found with same hash: {graph_fingerprint}')
 
-        count = 0
-        for fingerprint in module_fingerprints:
-          count += 1
-          logging.fatal(f'Module no.: {count}')
-          logging.fatal(f'\tModule Matrix: {np.array(module_buckets[fingerprint][0])}')
-          logging.fatal(f'\tOperations: {module_buckets[fingerprint][1]}')
+          count = 0
+          for fingerprint in module_fingerprints:
+            count += 1
+            logging.fatal(f'Module no.: {count}')
+            logging.fatal(f'\tModule Matrix: {np.array(module_buckets[fingerprint][0])}')
+            logging.fatal(f'\tOperations: {module_buckets[fingerprint][1]}')
 
-        sys.exit()
+          sys.exit()
+
+      logging.info('Upto %d modules: %d graphs',
+                    modules, total_graphs)
+  else:
+    assert FLAGS.max_modules == 1, 'The flag "max_modules" must be 1 if "run_nasbench" is True.'
+    logging.info(f'{print_util.bcolors.HEADER}Using {total_modules} modules to generate NASBench-like graphs{print_util.bcolors.ENDC}')
+    for module_fingerprint in module_buckets:
+
+        total_graphs += 1
+        graph_fingerprint = module_fingerprint
+
+        if graph_fingerprint not in graph_buckets:
+          graph_buckets[graph_fingerprint] = [module_buckets[module_fingerprint] 
+                                              for _ in range(config['num_stacks']*config['num_modules_per_stack'])]
+
+        # No need for Graph-level isomorphism check
 
     logging.info('Upto %d modules: %d graphs',
-                  modules, total_graphs)
+                    total_modules, total_graphs)
 
   with tf.io.gfile.GFile(FLAGS.output_file, 'w') as f:
     json.dump(graph_buckets, f, sort_keys=True)
