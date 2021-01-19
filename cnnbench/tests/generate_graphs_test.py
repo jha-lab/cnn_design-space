@@ -24,11 +24,25 @@ FLAGS(sys.argv)
 def test_graph_generation():
 
     FLAGS.output_file = 'g_test.json'
-    FLAGS.max_vertices = 3
+    FLAGS.module_vertices = 3
     FLAGS.max_modules = 3
+    FLAGS.run_nasbench = False
 
     graphs = graph_generator.main(1)
 
     os.remove(FLAGS.output_file)
 
     assert graphs == 399
+
+def test_graph_generation_nasbench():
+
+    FLAGS.output_file = 'g_test.json'
+    FLAGS.module_vertices = 3
+    FLAGS.max_modules = 1
+    FLAGS.run_nasbench = True
+
+    graphs = graph_generator.main(1)
+
+    os.remove(FLAGS.output_file)
+
+    assert graphs == 7
