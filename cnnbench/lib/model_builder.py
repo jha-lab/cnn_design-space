@@ -33,7 +33,7 @@ import numpy as np
 import tensorflow as tf
 
 
-def build_model_fn(spec, config, num_train_images):
+def build_model_fn(spec_list, config, num_train_images):
   """Returns a model function for Estimator."""
   if config['data_format'] == 'channels_last':
     channel_axis = 3
@@ -53,33 +53,38 @@ def build_model_fn(spec, config, num_train_images):
     # follow each stack.
     aux_activations = []
 
-    # Initial stem convolution
-    net = base_ops.conv_bn_relu(
-        features, 3, config['stem_filter_size'],
-        is_training, config['data_format'])
-    aux_activations.append(net)
-
-    for stack_num in range(config['num_stacks']):
-      channels = net.get_shape()[channel_axis]
-
-      # Downsample at start (except first)
-      if stack_num > 0:
-        net = tf.keras.layers.MaxPool2D(
-            pool_size=(2, 2),
-            strides=(2, 2),
-            padding='same',
-            data_format=config['data_format'])(net)
-
-        # Double output channels each time we downsample
-        channels *= 2
-
-      for module_num in range(config['num_modules_per_stack']):
-        net = build_module(
-            spec,
-            inputs=net,
-            channels=channels,
-            is_training=is_training)
+    # Run vanilla NASBench (assumes initial stem and downsampling layers)
+    # requires channel support in base_ops.py
+    # TODO: add support for generic models outside of NASBench architecture
+    if config['run_nasbench']:
+      # Initial stem convolution
+      net = base_ops.conv_bn_relu(
+          features, 3, config['stem_filter_size'],
+          is_training, config['data_format'])
       aux_activations.append(net)
+
+      for stack_num in range(config['num_stacks']):
+        channels = net.get_shape()[channel_axis]
+
+        # Downsample at start (except first)
+        if stack_num > 0:
+          net = tf.keras.layers.MaxPool2D(
+              pool_size=(2, 2),
+              strides=(2, 2),
+              padding='same',
+              data_format=config['data_format'])(net)
+
+          # Double output channels each time we downsample
+          channels *= 2
+
+        for module_num in range(config['num_modules_per_stack']):
+          spec = spec_list[stack_num + module_num]
+          net = build_module(
+              spec,
+              inputs=net,
+              channels=channels,
+              is_training=is_training)
+        aux_activations.append(net)
 
     # Global average pool
     if config['data_format'] == 'channels_last':

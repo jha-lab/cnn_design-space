@@ -130,7 +130,7 @@ module purge
 module load anaconda3/2020.7
 conda activate cnnbench
 
-python generate_graphs_script.py --max_vertices ${numVertices} \
+python generate_graphs_script.py --module_vertices ${numVertices} \
 --num_ops ${numOps} --output_file '${modelDir}/generated_graphs.json'
 
 for i in {0..${numTask_end}}
@@ -144,7 +144,7 @@ done
 
 wait
 
-python cleanup_script.py '${modelDir}/evaluation'
+python cleanup_script.py --cleanup_dir '${modelDir}/evaluation'
 
 python generate_dataset_script.py --model_dir '${modelDir}' --available_ops ${baseOps}" > $job_file
 

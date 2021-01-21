@@ -15,7 +15,7 @@ module purge
 module load anaconda3/2020.7
 conda activate cnnbench
 
-python generate_graphs_script.py --max_vertices 2 --output_file '../results/vertices_2/generated_graphs.json'
+python generate_graphs_script.py --module_vertices 2 --output_file '../results/vertices_2/generated_graphs.json'
 
 for i in {0..1}
 do
@@ -26,6 +26,6 @@ done
 
 wait
 
-python cleanup_script.py '../results/vertices_2/evaluation'
+python cleanup_script.py --cleanup_dir '../results/vertices_2/evaluation'
 
 python generate_dataset_script.py --model_dir '../results/vertices_2'

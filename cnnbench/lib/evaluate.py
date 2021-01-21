@@ -9,10 +9,10 @@
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
+# See the License for the spec_listific language governing permissions and
 # limitations under the License.
 
-"""Performs training and evaluation of the proposed model spec on TPU."""
+"""Performs training and evaluation of the proposed model spec_list on TPU."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -43,27 +43,27 @@ class AbortError(Exception):
   pass
 
 
-def train_and_evaluate(spec, config, model_dir):
+def train_and_evaluate(spec_list, config, model_dir):
   """Train and evaluate the proposed model.
 
   This method trains and evaluates the model for the creation of the benchmark
   dataset. The default values from the config.py are exactly the values used.
 
   Args:
-    spec: ModelSpec object.
+    spec_list: Modelspec_list object.
     config: config dict generated from config.py.
     model_dir: directory to store the checkpoint files.
 
   Returns:
     dict containing the evaluation metadata.
   """
-  return _train_and_evaluate_impl(spec, config, model_dir)
+  return _train_and_evaluate_impl(spec_list, config, model_dir)
 
 
-def augment_and_evaluate(spec, config, model_dir, epochs_per_eval=5):
+def augment_and_evaluate(spec_list, config, model_dir, epochs_per_eval=5):
   """Trains the model on the full training set and evaluates on test set.
 
-  "Augment" specifically refers to training the same spec in a larger network on
+  "Augment" spec_listifically refers to training the same spec_list in a larger network on
   the full training set.  Typically this involves increasing the epoch count,
   number of modules/stacks, and changing the LR schedule. These changes should
   be made to the config dict before calling this method.
@@ -72,7 +72,7 @@ def augment_and_evaluate(spec, config, model_dir, epochs_per_eval=5):
   train_and_evaluate instead.
 
   Args:
-    spec: ModelSpec object.
+    spec_list: Modelspec_list object.
     config: config dict generated from config.py.
     model_dir: directory to store the checkpoint files.
     epochs_per_eval: number of epochs per evaluation run. Evaluation is always
@@ -81,30 +81,30 @@ def augment_and_evaluate(spec, config, model_dir, epochs_per_eval=5):
   Returns:
     dict containing the evaluation metadata.
   """
-  return _augment_and_evaluate_impl(spec, config, model_dir, epochs_per_eval)
+  return _augment_and_evaluate_impl(spec_list, config, model_dir, epochs_per_eval)
 
 
-def _train_and_evaluate_impl(spec, config, model_dir):
+def _train_and_evaluate_impl(spec_list, config, model_dir):
   """Train and evaluate implementation, see train_and_evaluate docstring."""
-  evaluator = _TrainAndEvaluator(spec, config, model_dir)
+  evaluator = _TrainAndEvaluator(spec_list, config, model_dir)
   return evaluator.run()
 
 
 class _TrainAndEvaluator(object):
   """Runs the training and evaluation."""
 
-  def __init__(self, spec, config, model_dir):
+  def __init__(self, spec_list, config, model_dir):
     """Initialize evaluator. See train_and_evaluate docstring."""
     self.input_train = input_pipeline.dataset_input('train', config)
     self.input_train_eval = input_pipeline.dataset_input('train_eval', config)
     self.input_valid = input_pipeline.dataset_input('valid', config)
     self.input_test = input_pipeline.dataset_input('test', config)
     self.input_sample = input_pipeline.dataset_input('sample', config)
-    self.estimator = _create_estimator(spec, config, model_dir,
+    self.estimator = _create_estimator(spec_list, config, model_dir,
                                        self.input_train.num_images,
                                        self.input_sample.num_images)
 
-    self.spec = spec
+    self.spec_list = spec_list
     self.config = config
     self.model_dir = model_dir
 
@@ -217,12 +217,12 @@ class _TrainAndEvaluator(object):
     return sample_metrics
 
 
-def _augment_and_evaluate_impl(spec, config, model_dir, epochs_per_eval=5):
+def _augment_and_evaluate_impl(spec_list, config, model_dir, epochs_per_eval=5):
   """Augment and evaluate implementation, see augment_and_evaluate docstring."""
   input_augment, input_test = [
       input_pipeline.dataset_input(m, config)
       for m in ['augment', 'test']]
-  estimator = _create_estimator(spec, config, model_dir,
+  estimator = _create_estimator(spec_list, config, model_dir,
                                 input_augment.num_images)
 
   if config['train_seconds'] > 0.0:
@@ -258,7 +258,7 @@ def _augment_and_evaluate_impl(spec, config, model_dir, epochs_per_eval=5):
   return metadata
 
 
-def _create_estimator(spec, config, model_dir,
+def _create_estimator(spec_list, config, model_dir,
                       num_train_images, num_sample_images=None):
   """Creates the Estimator object."""
   # Estimator will save a checkpoint at the end of every train() call. Disable
@@ -281,7 +281,7 @@ def _create_estimator(spec, config, model_dir,
 
     estimator = tf.estimator.Estimator(
         model_fn=model_builder.build_model_fn(
-            spec, config, num_train_images),
+            spec_list, config, num_train_images),
         config=run_config,
         params={'batch_size': config['batch_size']})
   else:
@@ -303,7 +303,7 @@ def _create_estimator(spec, config, model_dir,
     estimator = tf.contrib.tpu.TPUEstimator(
         use_tpu=config['use_tpu'],
         model_fn=model_builder.build_model_fn(
-            spec, config, num_train_images),
+            spec_list, config, num_train_images),
         config=run_config,
         train_batch_size=config['batch_size'],
         eval_batch_size=config['batch_size'],

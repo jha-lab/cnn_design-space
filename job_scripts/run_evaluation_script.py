@@ -17,7 +17,7 @@ from absl import logging
 from absl import flags
 from absl import app
 
-from cnnbench.scripts import run_evaluation_new as run_evaluation
+from cnnbench.scripts import run_evaluation
 
 # Do not show warnings of deprecated functions
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
@@ -37,10 +37,10 @@ def main(args):
 	worker_id = FLAGS.worker_id + FLAGS.worker_id_offset
 
 	if not FLAGS.models_file:
-		FLAGS.models_file = f'../results/vertices_{FLAGS.module_vertices}_test/generated_graphs.json'
+		FLAGS.models_file = f'../results/vertices_{FLAGS.module_vertices}/generated_graphs.json'
 
 	if not FLAGS.output_dir:
-		FLAGS.output_dir = f'../results/vertices_{FLAGS.module_vertices}_test/evaluation'
+		FLAGS.output_dir = f'../results/vertices_{FLAGS.module_vertices}/evaluation'
 
 	# Forcing evaluation on specified GPU (if GPU is available)
 	gpus = tf.config.experimental.list_physical_devices('GPU')

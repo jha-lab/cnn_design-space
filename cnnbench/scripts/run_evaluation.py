@@ -175,16 +175,25 @@ class Evaluator(object):
       model_id = self.ordered_keys[index % self.num_models]
       model_repeat = index // self.num_models + 1
 
-    matrix, labels = self.models[model_id]
-    matrix = np.array(matrix)
+    matrices_list = []
+    labels_list = []
+    spec_list = []
+    for module in self.models[model_id]:
+      matrix = np.array(module[0])
 
-    # Re-label to config['available_ops']
-    labels = (['input'] +
-              [self.config['available_ops'][lab] for lab in labels[1:-1]] +
+      # Re-label to config['available_ops']
+      labels = (['input'] +
+              [self.config['available_ops'][lab] for lab in module[1][1:-1]] +
               ['output'])
-    spec = module_spec.ModuleSpec(matrix, labels, self.config['hash_algo'])
-    assert spec.valid_spec
-    assert np.sum(spec.matrix) <= self.config['max_edges']
+
+      spec = module_spec.ModuleSpec(matrix, labels, self.config['hash_algo'])
+
+      assert spec.valid_spec
+      assert np.sum(spec.matrix) <= self.config['max_edges'] 
+
+      matrices_list.append(matrix)
+      labels_list.append(labels)
+      spec_list.append(spec)
 
     # Split the directory into 16^2 roughly equal subdirectories
     model_dir = os.path.join(self.output_dir,
@@ -192,7 +201,7 @@ class Evaluator(object):
                              model_id,
                              'repeat_%d' % model_repeat)
     try:
-      meta = evaluate.train_and_evaluate(spec, self.config, model_dir)
+      meta = evaluate.train_and_evaluate(spec_list, self.config, model_dir)
     except evaluate.AbortError:
       # After hitting the retry limit, the job will continue to the next work
       # unit. These failed jobs may need to be re-run at a later point.

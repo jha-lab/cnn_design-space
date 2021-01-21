@@ -14,7 +14,7 @@ if os.path.abspath(os.path.join(sys.path[0], '../..')) not in sys.path:
   sys.path.append(os.path.abspath(os.path.join(sys.path[0], '../..')))
 
 
-from cnnbench.scripts import generate_graphs_new as graph_generator
+from cnnbench.scripts import generate_graphs as graph_generator
 
 FLAGS = flags.FLAGS
 
@@ -24,7 +24,8 @@ FLAGS(sys.argv)
 def test_graph_generation():
 
     FLAGS.output_file = 'g_test.json'
-    FLAGS.module_vertices = 3
+    FLAGS.module_vertices = 4
+    FLAGS.num_ops = 1
     FLAGS.max_modules = 3
     FLAGS.run_nasbench = False
 
@@ -32,12 +33,13 @@ def test_graph_generation():
 
     os.remove(FLAGS.output_file)
 
-    assert graphs == 399
+    assert graphs == 1836
 
 def test_graph_generation_nasbench():
 
     FLAGS.output_file = 'g_test.json'
-    FLAGS.module_vertices = 3
+    FLAGS.module_vertices = 4
+    FLAGS.num_ops = 1
     FLAGS.max_modules = 1
     FLAGS.run_nasbench = True
 
@@ -45,4 +47,4 @@ def test_graph_generation_nasbench():
 
     os.remove(FLAGS.output_file)
 
-    assert graphs == 7
+    assert graphs == 13
