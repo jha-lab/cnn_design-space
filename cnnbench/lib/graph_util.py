@@ -93,7 +93,7 @@ def num_edges(matrix):
 
 
 def hash_module(matrix, labeling, algo='md5'):
-  """Computes a graph-invariance hash of the matrix and label pair.
+  """Computes a module-invariance hash of the matrix and label pair.
 
   Args:
     matrix: np.ndarray square upper-triangular adjacency matrix.
@@ -108,12 +108,9 @@ def hash_module(matrix, labeling, algo='md5'):
   in_edges = np.sum(matrix, axis=0).tolist()
   out_edges = np.sum(matrix, axis=1).tolist()
 
-  def hash_algo(str):
-    return eval(f"hashlib.{algo}(str)")
-
   assert len(in_edges) == len(out_edges) == len(labeling)
   hashes = list(zip(out_edges, in_edges, labeling))
-  hashes = [hash_algo(str(h).encode('utf-8')).hexdigest() for h in hashes]
+  hashes = [hash_func(str(h).encode('utf-8'), algo).hexdigest() for h in hashes]
   # Computing this up to the diameter is probably sufficient but since the
   # operation is fast, it is okay to repeat more times.
   for _ in range(vertices):
@@ -121,31 +118,134 @@ def hash_module(matrix, labeling, algo='md5'):
     for v in range(vertices):
       in_neighbors = [hashes[w] for w in range(vertices) if matrix[w, v]]
       out_neighbors = [hashes[w] for w in range(vertices) if matrix[v, w]]
-      new_hashes.append(hash_algo(
+      new_hashes.append(hash_func(
           (''.join(sorted(in_neighbors)) + '|' +
            ''.join(sorted(out_neighbors)) + '|' +
-           hashes[v]).encode('utf-8')).hexdigest())
+           hashes[v]).encode('utf-8'), algo).hexdigest())
     hashes = new_hashes
-  fingerprint = hash_algo(str(sorted(hashes)).encode('utf-8')).hexdigest()
+  fingerprint = hash_func(str(sorted(hashes)).encode('utf-8'), algo).hexdigest()
 
   return fingerprint
 
 
-def permute_graph(graph, label, permutation):
-  """Permutes the graph and labels based on permutation.
+def hash_graph_simple(modules, algo='md5'):
+  """Computes a simple hash of the graph using the modules, a list of (matrix, label) pairs.
+  This method may lead to different hashes for the same graph. Use hash_graph() instead
 
   Args:
-    graph: np.ndarray adjacency matrix.
-    label: list of labels of same length as graph dimensions.
-    permutation: a permutation list of ints of same length as graph dimensions.
+    modules:list of tuples - (matrix, label) pairs
+    algo: hash algorithm among ["md5", "sha256", "sha512"]
 
   Returns:
-    np.ndarray where vertex permutation[v] is vertex v from the original graph
+    Hash of the graph based on algo.
   """
-  # vertex permutation[v] in new graph is vertex v in the old graph
+
+  module_hashes = []
+  for module in modules:
+    module_hashes.append(hash_module(np.array(module[0]), module[1], algo))
+
+  graph_fingerprint = hash_func('|'.join(module_hashes).encode('utf-8'), algo).hexdigest()
+
+  return graph_fingerprint
+
+def hash_graph(modules, algo='md5'):
+  """Computes a hash of the graph using the modules, a list of (matrix, label) pairs.
+
+  Args:
+    modules:list of tuples - (matrix, label) pairs
+    algo: hash algorithm among ["md5", "sha256", "sha512"]
+
+  Returns:
+    Hash of the graph based on algo.
+  """
+            
+  merged_modules = generate_merged_modules(modules)
+      
+  module_hashes = []
+  for module in merged_modules:
+    assert is_full_dag(np.array(module[0]))
+    module_hashes.append(hash_module(np.array(module[0]), module[1], algo))
+
+  graph_fingerprint = hash_func('|'.join(module_hashes).encode('utf-8'), algo).hexdigest()
+
+  return graph_fingerprint
+
+
+def generate_merged_modules(modules):
+  merged_modules = [modules[0]]
+
+  for i in range(1, len(modules)):
+    if mergeable(merged_modules[-1], modules[i]):
+      merged_modules[-1] = merge_modules(merged_modules[-1], modules[i])
+    else:
+      merged_modules.append(modules[i])
+
+  return merged_modules
+
+
+def hash_func(str, algo='md5'):
+  """Outputs has based on algorithm defined."""
+  return eval(f"hashlib.{algo}(str)")
+
+
+def mergeable(module1, module2):
+  """Checks if modules can be merged."""
+  return np.sum(np.array(module1[0])[:, -1]) == 1 and np.sum(np.array(module2[0])[:, -1]) == 1
+
+
+def merge_modules(module1, module2):
+  """Merges two modules when output vertex of one and input vertex of second do not have more than 
+    one neighbor"""
+  size_1 = np.shape(np.array(module1[0]))[0]
+  size_2 = np.shape(np.array(module2[0]))[0]
+  size_new = size_1 + size_2 - 2
+  new_matrix = np.zeros((size_new, size_new))
+  new_matrix[:size_1, :size_1] = np.array(module1[0])
+
+  for i, j in itertools.product(range(size_2), range(size_2)):
+    new_matrix[i+size_1-2, j+size_1-2] = np.array(module2[0])[i, j] 
+
+  new_module = (new_matrix.astype(int).tolist(), module1[1][:-1] + module2[1][1:])
+
+  return new_module
+
+
+def compare_graphs(graph1, graph2):
+  """Exhaustively checks if two graphs are equal."""
+  merged_modules1 = generate_merged_modules(graph1)
+  merged_modules2 = generate_merged_modules(graph2)
+
+  if len(merged_modules1) != len(merged_modules2): return 1
+
+  flag = False
+  for i in range(len(merged_modules1)):
+    if not np.all(np.array(merged_modules1[i][0]).shape == np.array(merged_modules2[i][0]).shape) \
+        or not np.all(np.array(merged_modules1[i][1]).shape == np.array(merged_modules2[i][1]).shape):
+      return 2
+    elif np.all(np.array(merged_modules1[i][0]) == np.array(merged_modules2[i][0])) \
+        and np.all(np.array(merged_modules1[i][1]) == np.array(merged_modules2[i][1])):
+      flag = True
+    else:
+      return 3
+
+  return flag
+
+
+def permute_module(matrix, label, permutation):
+  """Permutes the matrix and labels based on permutation.
+
+  Args:
+    matrix: np.ndarray adjacency matrix.
+    label: list of labels of same length as matrix dimensions.
+    permutation: a permutation list of ints of same length as matrix dimensions.
+
+  Returns:
+    np.ndarray where vertex permutation[v] is vertex v from the original matrix
+  """
+  # vertex permutation[v] in new matrix is vertex v in the old matrix
   forward_perm = zip(permutation, list(range(len(permutation))))
   inverse_perm = [x[1] for x in sorted(forward_perm)]
-  edge_fn = lambda x, y: graph[inverse_perm[x], inverse_perm[y]] == 1
+  edge_fn = lambda x, y: matrix[inverse_perm[x], inverse_perm[y]] == 1
   new_matrix = np.fromfunction(np.vectorize(edge_fn),
                                (len(label), len(label)),
                                dtype=np.int8)
@@ -153,18 +253,18 @@ def permute_graph(graph, label, permutation):
   return new_matrix, new_label
 
 
-def is_isomorphic(graph1, graph2):
-  """Exhaustively checks if 2 graphs are isomorphic."""
-  matrix1, label1 = np.array(graph1[0]), graph1[1]
-  matrix2, label2 = np.array(graph2[0]), graph2[1]
+def is_isomorphic(matrix1, matrix2):
+  """Exhaustively checks if 2 modules are isomorphic."""
+  matrix1, label1 = np.array(matrix1[0]), matrix1[1]
+  matrix2, label2 = np.array(matrix2[0]), matrix2[1]
   assert np.shape(matrix1) == np.shape(matrix2)
   assert len(label1) == len(label2)
 
   vertices = np.shape(matrix1)[0]
-  # Note: input and output in our constrained graphs always map to themselves
+  # Note: input and output in our constrained matrices always map to themselves
   # but this script does not enforce that.
   for perm in itertools.permutations(range(0, vertices)):
-    pmatrix1, plabel1 = permute_graph(matrix1, label1, perm)
+    pmatrix1, plabel1 = permute_module(matrix1, label1, perm)
     if np.array_equal(pmatrix1, matrix2) and plabel1 == label2:
       return True
 

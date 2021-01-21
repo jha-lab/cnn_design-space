@@ -48,11 +48,13 @@ flags.DEFINE_string(
     'Dataset name')
 flags.DEFINE_string(
     'data_dir', '', 'Directory of datasets')
-flags.DEFINE_string('hash_algo', 'md5', 'Hash algorithm used among'
-                    ' ["md5", "sha256", "sha512"]')
-flags.DEFINE_boolean('run_nasbench', True,
-                      'Runs vanilla NASBench framework (assuming initial stem'
-                      ' and downsampling layers)')
+flags.DEFINE_string(
+    'hash_algo', 'md5', 'Hash algorithm used among'
+    ' ["md5", "sha256", "sha512"]')
+flags.DEFINE_bool(
+    'run_nasbench', True,
+    'Runs vanilla NASBench framework (assuming initial stem'
+    ' and downsampling layers)')
 flags.DEFINE_integer(
     'num_labels', 10, 'Number of input class labels.')
 
