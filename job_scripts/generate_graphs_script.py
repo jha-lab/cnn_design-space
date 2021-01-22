@@ -34,8 +34,9 @@ def main(args):
 	if not FLAGS.output_file:
 		if not os.path.exists(f'../results/vertices_{FLAGS.module_vertices}'):
 			os.makedirs(f'../results/vertices_{FLAGS.module_vertices}')
-
 		FLAGS.output_file = f'../results/vertices_{FLAGS.module_vertices}/generated_graphs.json'
+	elif not os.path.exists(FLAGS.output_file):
+		os.makedirs(os.path.dirname(FLAGS.output_file))
 
 	# Generate graphs
 	graphs = graph_generator.main(1)
