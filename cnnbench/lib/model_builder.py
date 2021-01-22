@@ -285,8 +285,8 @@ def build_module(spec, inputs, channels, is_training):
       add_in = [truncate(tensors[src], vertex_channels[t], spec.data_format)
                 for src in range(1, t) if spec.matrix[src, t]]
 
-      # Create add connection from projected input
-      if spec.matrix[0, t]:
+      # Create add connection from projected input (only for output)
+      if spec.matrix[0, num_vertices - 1]: # if spec.matrix[0, t]:
         add_in.append(projection(
             tensors[0],
             vertex_channels[t],
@@ -295,8 +295,10 @@ def build_module(spec, inputs, channels, is_training):
 
       if len(add_in) == 1:
         vertex_input = add_in[0]
-      else:
+      elif len(add_in) > 1:
         vertex_input = tf.add_n(add_in)
+      else:
+        vertex_input = tensors[0]
 
       # Perform op at vertex t
       op = base_ops.OP_MAP[spec.ops[t]](
