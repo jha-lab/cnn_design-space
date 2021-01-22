@@ -30,14 +30,105 @@ warnings.filterwarnings("ignore")
 if os.path.abspath(os.path.join(sys.path[0], '../..')) not in sys.path:
   sys.path.append(os.path.abspath(os.path.join(sys.path[0], '../..')))
 
-import random
+from cnnbench.lib import base_ops
 from cnnbench.lib import graph_util
+from cnnbench.lib import model_builder 
+from cnnbench.lib import module_spec
+from cnnbench.lib import config as _config
+
+import random
 import numpy as np
 import tensorflow as tf
+import copy
 
 FLAGS = flags.FLAGS
 
 FLAGS(sys.argv)
+
+def get_basic_model(graph):
+  config = _config.build_config()
+
+  is_training = True
+
+  if config['data_format'] == 'channels_last':
+    channel_axis = 3
+  elif config['data_format'] == 'channels_first':
+    # Currently this is not well supported
+    channel_axis = 1
+  else:
+    raise ValueError('invalid data_format')
+
+  matrices_list = []
+  labels_list = []
+  spec_list = []
+
+  for module in graph:
+    matrix = np.array(module[0])
+
+    # Re-label to config['available_ops']
+    labels = (['input'] +
+            [config['available_ops'][lab] for lab in module[1][1:-1]] +
+            ['output'])
+
+    spec = module_spec.ModuleSpec(matrix, labels, config['hash_algo'])
+
+    assert spec.valid_spec
+    assert np.sum(spec.matrix) <= config['max_edges'] 
+
+    matrices_list.append(matrix)
+    labels_list.append(labels)
+    spec_list.append(spec)
+
+  input = tf.keras.layers.Input(shape=(224, 224, 3))
+
+  if config['run_nasbench']:
+    # Initial stem convolution
+    net = base_ops.conv_bn_relu(
+        input, 3, config['stem_filter_size'],
+        is_training, config['data_format'])
+
+    channels = net.get_shape()[channel_axis]
+
+    for module_num in range(len(graph)):
+      spec = spec_list[module_num]
+      net = model_builder.build_module(
+        spec,
+        inputs=net,
+        channels=channels,
+        is_training=is_training)
+
+    net = tf.keras.layers.GlobalAvgPool2D()(net)
+
+    output = tf.keras.layers.Dense(1000, activation='softmax')(net)
+
+
+  model = tf.keras.Model(input, output)
+  return model
+
+
+def test_models_with_same_hash():
+  """Tests graphs with same recursive hash"""
+  matrix1 = np.array([[0, 1, 0],
+                       [0, 0, 1],
+                       [0, 0, 0]])
+  matrix2 = copy.deepcopy(matrix1)
+  label1 = [-1, 0, -2]
+
+  graph1 = [(matrix1.astype(int).tolist(), label1), (matrix2.astype(int).tolist(), label1)]
+
+  matrix3 = np.array([[0, 1, 0, 0],
+                    [0, 0, 1, 0],
+                    [0, 0, 0, 1],
+                    [0, 0, 0, 0]])
+  label2 = [-1, 0, 0, -2]
+
+  graph2 = [(matrix3.astype(int).tolist(), label2)]
+
+  assert graph_util.hash_graph_simple(graph1) != graph_util.hash_graph_simple(graph2)
+
+  assert graph_util.hash_graph(graph1) == graph_util.hash_graph(graph2)
+
+  assert graph_util.compare_graphs(graph1, graph2)
 
 
 def test_gen_is_edge():

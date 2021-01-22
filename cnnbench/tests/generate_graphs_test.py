@@ -1,4 +1,4 @@
-# Script to test graph generation
+"""Tests for scripts/generate_graphs.py"""
 # Author :  Shikhar Tuli
 
 import sys
