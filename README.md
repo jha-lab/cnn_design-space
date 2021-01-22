@@ -8,7 +8,7 @@
 <!-- ![Hits](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2FJHA-Lab%2Fcnn_design-space&count_bg=%23FFC401&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=hits&edge_flat=false) -->
 
 This directory contains the tool **CNNBench** which can be used to generate and evaluate different Convolutional Neural Network (CNN) architectures pertinent to the domain of Machine-Learning Accelerators. 
-The code has been forked from [nasbench](https://github.com/google-research/nasbench) repository and then expanded to cover a larger set of CNN architectures.
+This repository has been forked from [nasbench](https://github.com/google-research/nasbench) and then expanded to cover a larger set of CNN architectures.
 
 ## Environment setup
 
@@ -44,7 +44,7 @@ cd cnnbenchs/scripts
 python generate_tfrecords.py
 ```
 
-_To use another dataset (among CIFAR-10, CIFAR-100, MNIST, or ImageNet) use input arguments. Check:_ `python generate_tfrecords.py --help`.
+_To use another dataset (among CIFAR-10, CIFAR-100, MNIST, or ImageNet) use input arguments, check:_ `python generate_tfrecords.py --help`.
 
 2. Generate computational graphs
 ```
@@ -53,7 +53,7 @@ python generate_graphs_script.py
 ```
 This will create a `.json` file of all graphs at: `../results/vertices_2/generate_graphs.json` using the MD5 hashing algorithm.
 
-_To generate graphs of upto 'n' vertices with SHA-256 hashing algorithm use:_ `python generate_graphs_script.py --max_vertices n --hash_algo sha256`.
+_To generate graphs of upto 'n' vertices with SHA-256 hashing algorithm, use:_ `python generate_graphs_script.py --max_vertices n --hash_algo sha256`.
 
 3. Run evaluation over all the generated graphs
 ```
@@ -65,17 +65,21 @@ _To run evaluation over graphs generate with 'n' vertices, use:_ `python run_eva
 
 4. Generate the dataset `cnnbench.tfrecord`
 ```
-python generate_dataset_script.py --model_dir ../results/vertices_2
+python generate_dataset_script.py
 ```
 This generates the CNNBench dataset in a `.tfrecord` file with the evaluation results for all computational graphs that are trained.
 
 _For visualization use:_ `visualization/cnnbench_results.ipynb`.
 
+This basic run as explained above can be implemented automatically by running the script: `job_scripts/basic_run.sh`.
+
 ## Job Scripts
 
-To automate the above process, a slurm script is provided at: `job_scripts/job_test.slurm`. To run the tool on multiple nodes and utilize multiple GPUs, use `job_scripts/job_creator_script.sh`. 
-For more details on how to use this script, check: `source job_scripts/job_creator_script.sh --help`. Currently, these scripts only support running on **Adroit/Tiger clusters** at Princeton University. 
-More information can be found at the [Princeton Research Computing website](https://researchcomputing.princeton.edu/systems-and-services/available-systems).
+To efficiently use GPUs/TPUs over multiple nodes on a cluster, a slurm script is provided at: `job_scripts/job_basic.slurm`. To run the tool on multiple nodes and utilize multiple GPUs according to constraints, use `job_scripts/job_creator_script.sh`. 
+
+For more details on how to use this script, check: `source job_scripts/job_creator_script.sh --help`. Currently, these scripts only support running on **Adroit/Tiger clusters** at Princeton University.
+
+More information about these clusters and their usage can be found at the [Princeton Research Computing website](https://researchcomputing.princeton.edu/systems-and-services/available-systems).
 
 ## Colab
 
