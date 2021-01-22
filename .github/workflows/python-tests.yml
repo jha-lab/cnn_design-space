@@ -40,7 +40,7 @@ jobs:
     - name: Test graph generator
       run: |
         pytest cnnbench/tests/generate_graphs_test.py
-    - name: Test module spec generation
+    - name: Test module spec generator
       run: |
         pytest cnnbench/tests/module_spec_test.py
     - name: Test model builder
