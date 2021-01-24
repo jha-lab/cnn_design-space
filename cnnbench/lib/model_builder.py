@@ -59,7 +59,7 @@ def build_model_fn(spec_list, config, num_train_images):
     if config['run_nasbench']:
       # Initial stem convolution
       net = base_ops.conv_bn_relu(
-          features, 3, config['stem_filter_size'],
+          features, 3, config['stem_filter_size'], (1, 1),
           is_training, config['data_format'])
       aux_activations.append(net)
 
@@ -341,7 +341,7 @@ def build_module(spec, inputs, channels, is_training):
 def projection(inputs, channels, is_training, data_format):
   """1x1 projection (as in ResNet) followed by batch normalization and ReLU."""
   with tf.compat.v1.variable_scope('projection'):
-    net = base_ops.conv_bn_relu(inputs, 1, channels, is_training, data_format)
+    net = base_ops.conv_bn_relu(inputs, 1, channels, (1, 1), is_training, data_format)
 
   return net
 

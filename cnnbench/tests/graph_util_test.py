@@ -84,7 +84,7 @@ def get_basic_model(graph):
   if config['run_nasbench']:
     # Initial stem convolution
     net = base_ops.conv_bn_relu(
-        input, 3, config['stem_filter_size'],
+        input, 3, config['stem_filter_size'], (1, 1),
         is_training, config['data_format'])
 
     channels = net.get_shape()[channel_axis]
