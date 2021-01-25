@@ -1,4 +1,4 @@
-# CNNBench: A CNN Design-Space generation tool and benchmark
+# CNNBench: A CNN Design-Space Generation Tool and Benchmark
 
 ![Python Version](https://img.shields.io/badge/python-v3.6%20%7C%20v3.7%20%7C%20v3.8-blue)
 ![Conda](https://img.shields.io/badge/conda%7Cconda--forge-v4.8.3-blue)
@@ -7,7 +7,7 @@
 ![Tests](https://github.com/JHA-Lab/cnn_design-space/workflows/tests/badge.svg)
 <!-- ![Hits](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2FJHA-Lab%2Fcnn_design-space&count_bg=%23FFC401&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=hits&edge_flat=false) -->
 
-This directory contains the tool **CNNBench** which can be used to generate and evaluate different Convolutional Neural Network (CNN) architectures pertinent to the domain of Machine-Learning Accelerators. 
+This repository contains the tool **CNNBench** which can be used to generate and evaluate different Convolutional Neural Network (CNN) architectures pertinent to the domain of Machine-Learning Accelerators. 
 This repository has been forked from [nasbench](https://github.com/google-research/nasbench) and then expanded to cover a larger set of CNN architectures.
 
 ## Environment setup
@@ -44,7 +44,7 @@ cd cnnbenchs/scripts
 python generate_tfrecords.py
 ```
 
-_To use another dataset (among CIFAR-10, CIFAR-100, MNIST, or ImageNet) use input arguments, check:_ `python generate_tfrecords.py --help`.
+_To use another dataset (among CIFAR-10, CIFAR-100, MNIST, or ImageNet) use input arguments; check:_ `python generate_tfrecords.py --help`.
 
 2. Generate computational graphs
 ```
@@ -75,7 +75,7 @@ This basic run as explained above can be implemented automatically by running th
 
 ## Job Scripts
 
-To efficiently use GPUs/TPUs over multiple nodes on a cluster, a slurm script is provided at: `job_scripts/job_basic.slurm`. To run the tool on multiple nodes and utilize multiple GPUs according to constraints, use `job_scripts/job_creator_script.sh`. 
+To efficiently use mutiple GPUs/TPUs on a cluster, a slurm script is provided at: `job_scripts/job_basic.slurm`. To run the tool on multiple nodes and utilize multiple GPUs in a cluster according to given constraints in the design-space, use `job_scripts/job_creator_script.sh`. 
 
 For more details on how to use this script, check: `source job_scripts/job_creator_script.sh --help`. Currently, these scripts only support running on **Adroit/Tiger clusters** at Princeton University.
 
