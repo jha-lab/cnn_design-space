@@ -96,7 +96,7 @@ def build_model_fn(spec_list, config, num_train_images):
 
     # Fully-connected layer to labels
     logits = tf.keras.layers.Dense(
-        units=config['num_labels'])(net) # TODO: add support for more layers and activations
+        units=config['num_labels'], activation='softmax')(net) # TODO: add support for more layers and activations
 
     if mode == tf.estimator.ModeKeys.PREDICT and not config['use_tpu']:
       # It is a known limitation of Estimator that the labels
@@ -105,9 +105,10 @@ def build_model_fn(spec_list, config, num_train_images):
       # compute the loss or anything dependent on it (i.e., the gradients).
       loss = tf.constant(0.0)
     else:
-      loss = tf.compat.v1.losses.softmax_cross_entropy( # TODO: add support for other loss functions
-          onehot_labels=tf.one_hot(labels, config['num_labels']),
-          logits=logits)
+      loss_fn = tf.keras.losses.CategoricalCrossentropy() # TODO: add support for other loss functions
+      loss = loss_fn( 
+          y_true=tf.one_hot(labels, config['num_labels']),
+          y_pred=logits)
 
       loss += config['weight_decay'] * tf.add_n(
           [tf.nn.l2_loss(v) for v in tf.compat.v1.trainable_variables()])
@@ -301,7 +302,7 @@ def build_module(spec, inputs, channels, is_training):
         vertex_input = tensors[0]
 
       # Perform op at vertex t
-      op = base_ops.OP_MAP[spec.ops[t]](
+      op = base_ops.CONV_MAP[spec.ops[t]](
           is_training=is_training,
           data_format=spec.data_format)
       vertex_value = op.build(vertex_input, vertex_channels[t])

@@ -372,7 +372,7 @@ class AvgPool3x3(BaseOp):
     return net
 
 
-class GobalAvgPool(BaseOp):
+class GlobalAvgPool(BaseOp):
   """global average pool with no subsampling."""
 
   def build(self, inputs, channels):
@@ -384,7 +384,7 @@ class GobalAvgPool(BaseOp):
 
 
 class Flatten(BaseOp):
-  """global average pool with no subsampling."""
+  """simple flattening layer"""
 
   def build(self, inputs, channels):
     del channels    # Unused
@@ -449,16 +449,6 @@ class MaxPool3x3Conv1x1(BaseOp):
 
     return net
 
-
-class Dropout(BaseOp):
-  """3x3 max pool with no subsampling."""
-
-  def build(self, inputs, channels):
-    del channels    # Unused
-    net = tf.keras.layers.Dropout(
-        rate=DROPOUT_RATE)(inputs)
-
-    return net
 
 ## Specialized base operations with channels pre-defined
 
@@ -660,6 +650,28 @@ class Conv1x1BnRelu_F2048_S2(BaseOp):
 
     return net
 
+# class Flatten(BaseOp)
+
+class Dense4096_ReLU(BaseOp):
+  """dense layer with ReLU activation."""
+
+  def build(self, inputs, channels):
+    del channels
+    net = tf.keras.layers.Dense(
+        units=4096, activation='relu', kernel_initializer='uniform')(inputs)
+
+    return net
+
+class Dropout_p5(BaseOp):
+  """dropout layer."""
+
+  def build(self, inputs, channels):
+    del channels    # Unused
+    net = tf.keras.layers.Dropout(
+        rate=0.5)(inputs)
+
+    return net
+
 
 ## Base operations for DenseNet-121
 # class Conv7x7BnRelu_F64_S2(BaseOp)
@@ -707,6 +719,8 @@ class AvgPool2x2_S2(BaseOp):
         data_format=self.data_format)(inputs)
 
     return net
+
+# class GlobalAvgPool(BaseOp)
 
 
 ## Base operations for GoogLeNet
@@ -994,7 +1008,7 @@ class Conv1x1BnRelu_F48(BaseOp):
 # class Conv1x1BnRelu_F128(BaseOp)
 
 class AvgPool7x7(BaseOp):
-  """2x2 average pool with no subsampling."""
+  """7x7 average pool with no subsampling."""
 
   def build(self, inputs, channels):
     del channels    # Unused
@@ -1005,6 +1019,18 @@ class AvgPool7x7(BaseOp):
         data_format=self.data_format)(inputs)
 
     return net
+
+class Dropout_p4(BaseOp):
+  """dropout layer"""
+
+  def build(self, inputs, channels):
+    del channels    # Unused
+    net = tf.keras.layers.Dropout(
+        rate=0.4)(inputs)
+
+    return net
+
+# class GlobalAvgPool(BaseOp)
 
 
 ## Base operations for MobileNet
@@ -1067,7 +1093,7 @@ class DepthwiseConv3x3BnRelu_S2(BaseOp):
 
 # class Conv1x1BnRelu_F1024(BaseOp)
 
-# class AvgPool7x7(BaseOp)
+# class GlobalAvgPool(BaseOp)
 
 
 ## Base operations for ShuffleNet (g=8)
@@ -1183,6 +1209,8 @@ class GroupedConv1x1BnRelu_G8_F1536(BaseOp):
 
 # class AvgPool3x3_S2(BaseOp)
 
+# class GlobalAvgPool(BaseOp)
+
 
 ## Base operations for Xception
 """We use combination of DepthwiseConvBnRelu and Conv1x1BnRelu
@@ -1243,6 +1271,8 @@ class Conv1x1BnRelu_F1536(BaseOp):
 
 # class Conv1x1BnRelu_F2048(BaseOp)
 
+# class GlobalAvgPool(BaseOp)
+
 
 ## Base operations for SqueezeNet
 class Conv7x7BnRelu_F96(BaseOp):
@@ -1284,6 +1314,8 @@ class Conv7x7BnRelu_F96(BaseOp):
 
 # class MaxPool3x3_S2(BaseOp)
 
+# class GlobalAvgPool(BaseOp)
+
 
 # Base operations for VGG
 # class Conv3x3BnRelu_F64(BaseOp)
@@ -1305,6 +1337,10 @@ class MaxPool2x2_S2(BaseOp):
 # class MaxPool2x2_S2(BaseOp)
 
 # class Conv3x3BnRelu_F512(BaseOp)
+
+# class Flatten(BaseOp)
+
+# class Dense4096_ReLU(BaseOp)
 
 
 ## Base operations for LeNet
@@ -1341,8 +1377,28 @@ class Conv3x3BnRelu_F16(BaseOp):
 
 # class AvgPool2x2(BaseOp)
 
+class Dense120_ReLU(BaseOp):
+  """dense layer with ReLU activation."""
+
+  def build(self, inputs, channels):
+    del channels
+    net = tf.keras.layers.Dense(
+        units=120, activation='relu', kernel_initializer='uniform')(inputs)
+
+    return net
+
+class Dense84_ReLU(BaseOp):
+  """dense layer with ReLU activation."""
+
+  def build(self, inputs, channels):
+    del channels
+    net = tf.keras.layers.Dense(
+        units=84, activation='relu', kernel_initializer='uniform')(inputs)
+
+    return net
+
 # Commas should not be used in op names
-OP_MAP = {
+CONV_MAP = {
     'identity': Identity,
     'conv11x11-bn-relu': Conv11x11BnRelu,
     'conv7x7-bn-relu': Conv7x7BnRelu,
@@ -1353,4 +1409,14 @@ OP_MAP = {
     'bottleneck3x3': BottleneckConv3x3,
     'bottleneck5x5': BottleneckConv5x5,
     'maxpool3x3-conv1x1': MaxPool3x3Conv1x1,
+}
+
+DENSE_MAP = {
+    'global-avg-pool': GlobalAvgPool,
+    'flatten': Flatten,
+    'dense4096-relu': Dense4096_ReLU,
+    'dense120-relu': Dense120_ReLU,
+    'dense84-relu': Dense84_ReLU,
+    'dropout-p5': Dropout_p5,
+    'dropout-p4': Dropout_p4,
 }
