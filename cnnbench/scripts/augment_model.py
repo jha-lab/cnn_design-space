@@ -18,6 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import os
 import sys
 if '../../' not in sys.path:
 	sys.path.append('../../')
@@ -26,18 +27,21 @@ from cnnbench.lib import config as _config
 from cnnbench.lib import evaluate
 from cnnbench.lib import module_spec
 import numpy as np
-import tensorflow as tf     # Used for app, flags, logging
+import tensorflow as tf
 
 from absl import flags
+from absl import logging 
+from absl import app
 
 flags.DEFINE_string('model_dir', '', 'model directory')
 flags.DEFINE_integer('worker_id', 0,
                      'Worker ID within this flock, starting at 0.')
-flags.DEFINE_integer('worker_id_offset', 0,
-                     'Worker ID offset added.')
-flags.DEFINE_integer('total_workers', 1,
-                     'Total number of workers, across all flocks.')
 FLAGS = flags.FLAGS
+
+# Do not show warnings of deprecated functions
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+logging.get_absl_handler().setFormatter(None)
+logging.set_verbosity(logging.INFO)  # or any {DEBUG, INFO, WARN, ERROR, FATAL} 
 
 
 def create_resnet20_spec(config):
@@ -64,10 +68,7 @@ def create_resnet20_spec(config):
   config['num_modules_per_stack'] = 3
   config['stem_filter_size'] = 16
 
-  spec_list = []
-  for s in range(config['num_stacks']):
-  	for m in range(config['num_modules_per_stack']):
-  		spec_list.append(spec)
+  spec_list = [spec for _ in range(config['num_stacks']*config['num_modules_per_stack'])]
 
   return spec_list
 
@@ -95,10 +96,7 @@ def create_resnet50_spec(config):
   config['num_modules_per_stack'] = 6
   config['stem_filter_size'] = 128
   
-  spec_list = []
-  for s in range(config['num_stacks']):
-  	for m in range(config['num_modules_per_stack']):
-  		spec_list.append(spec)
+  spec_list = [spec for _ in range(config['num_stacks']*config['num_modules_per_stack'])]
 
   return spec_list
 
@@ -132,10 +130,7 @@ def create_inception_resnet_spec(config):
   config['num_modules_per_stack'] = 3
   config['stem_filter_size'] = 128
   
-  spec_list = []
-  for s in range(config['num_stacks']):
-  	for m in range(config['num_modules_per_stack']):
-  		spec_list.append(spec)
+  spec_list = [spec for _ in range(config['num_stacks']*config['num_modules_per_stack'])]
 
   return spec_list
 
@@ -164,10 +159,7 @@ def create_best_nasbench_spec(config):
   config['num_modules_per_stack'] = 3
   config['stem_filter_size'] = 128
   
-  spec_list = []
-  for s in range(config['num_stacks']):
-  	for m in range(config['num_modules_per_stack']):
-  		spec_list.append(spec)
+  spec_list = [spec for _ in range(config['num_stacks']*config['num_modules_per_stack'])]
 
   return spec_list
 
@@ -181,11 +173,17 @@ def main(_):
   config['train_epochs'] = 200
   config['lr_decay_method'] = 'STEPWISE'
   config['train_seconds'] = -1      # Disable training time limit
-  spec_list = create_resnet20_spec(config)
+  spec_list = create_best_nasbench_spec(config) # create_resnet20_spec(config)
+
+  # Forcing evaluation on specified GPU (if GPU is available)
+  gpus = tf.config.experimental.list_physical_devices('GPU')
+  if gpus:
+    tf.config.experimental.set_visible_devices(gpus[FLAGS.worker_id % len(gpus)], 'GPU')
 
   data = evaluate.augment_and_evaluate(spec_list, config, FLAGS.model_dir)
-  tf.compat.v1.logging.info(data)
+
+  logging.info(data)
 
 
 if __name__ == '__main__':
-  tf.compat.v1.app.run(main)
+  app.run(main)

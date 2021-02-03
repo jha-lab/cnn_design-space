@@ -105,10 +105,13 @@ def build_model_fn(spec_list, config, num_train_images):
       # compute the loss or anything dependent on it (i.e., the gradients).
       loss = tf.constant(0.0)
     else:
-      loss_fn = tf.keras.losses.CategoricalCrossentropy() # TODO: add support for other loss functions
-      loss = loss_fn( 
-          y_true=tf.one_hot(labels, config['num_labels']),
-          y_pred=logits)
+      # loss_fn = tf.keras.losses.CategoricalCrossentropy() # TODO: add support for other loss functions
+      # loss = loss_fn( 
+      #     y_true=tf.one_hot(labels, config['num_labels']),
+      #     y_pred=logits)
+      loss = tf.compat.v1.losses.softmax_cross_entropy(
+          onehot_labels=tf.one_hot(labels, config['num_labels']),
+          logits=logits)
 
       loss += config['weight_decay'] * tf.add_n(
           [tf.nn.l2_loss(v) for v in tf.compat.v1.trainable_variables()])
@@ -251,7 +254,7 @@ def build_module(spec, inputs, channels, is_training):
   concatenation of Tensors.
 
   Args:
-    spec: ModelSpec object.
+    spec: ModuleSpec object.
     inputs: input Tensors to this module.
     channels: output channel count.
     is_training: bool for whether this model is training.
@@ -383,7 +386,7 @@ def compute_vertex_channels(input_channels, output_channels, matrix):
   Args:
     input_channels: input channel count.
     output_channels: output channel count.
-    matrix: adjacency matrix for the module (pruned by model_spec).
+    matrix: adjacency matrix for the module (pruned by module_spec).
 
   Returns:
     list of channel counts, in order of the vertices.

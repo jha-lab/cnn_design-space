@@ -166,7 +166,14 @@ class dataset_input(object):
       else:
         # Usage of crop_size here is intentional
         im = tf.image.resize(im, [crop_size, crop_size])
-      im = (im - 127.5) / 127.5
+      # im = (im - 127.5) / 127.5
+      # TODO: add support for mean/std for other datasets apart from CIFAR-10
+      if self.config['data_format'] == 'channels_last':
+        im -= tf.constant(RGB_MEAN, shape=[1, 1, 3])
+        im /= tf.constant(RGB_STD, shape=[1, 1, 3])
+      else:
+        im -= tf.constant(RGB_MEAN, shape=[3, 1, 1])
+        im /= tf.constant(RGB_STD, shape=[3, 1, 1])
       label = tf.cast(label, tf.int32)
       # label = tf.one_hot(label, ds_info['num_classes'])
       return image, label # {'image': im, 'label': label}
