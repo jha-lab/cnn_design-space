@@ -164,6 +164,7 @@ def main(_):
 
   # Generate graphs using modules
   # Permute over modules to generate graphs with upto FLAGS.max_modules
+  # TODO: add support for dense_ops in the last module
   if not FLAGS.run_nasbench:
     logging.info(f'{print_util.bcolors.HEADER}Using max {FLAGS.max_modules} modules{print_util.bcolors.ENDC}')
     for modules in range(1, FLAGS.max_modules+1):

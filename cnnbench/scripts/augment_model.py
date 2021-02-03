@@ -18,18 +18,26 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import sys
+if '../../' not in sys.path:
+	sys.path.append('../../')
+
 from cnnbench.lib import config as _config
 from cnnbench.lib import evaluate
-from cnnbench.lib import model_spec
+from cnnbench.lib import module_spec
 import numpy as np
 import tensorflow as tf     # Used for app, flags, logging
 
 from absl import flags
 
-FLAGS = flags.FLAGS
-
 flags.DEFINE_string('model_dir', '', 'model directory')
-FLAGS = tf.flags.FLAGS
+flags.DEFINE_integer('worker_id', 0,
+                     'Worker ID within this flock, starting at 0.')
+flags.DEFINE_integer('worker_id_offset', 0,
+                     'Worker ID offset added.')
+flags.DEFINE_integer('total_workers', 1,
+                     'Total number of workers, across all flocks.')
+FLAGS = flags.FLAGS
 
 
 def create_resnet20_spec(config):
@@ -43,18 +51,25 @@ def create_resnet20_spec(config):
     config: config dict created by config.py.
 
   Returns:
-    ModelSpec object.
+    ModuleSpec object.
   """
-  spec = model_spec.ModelSpec(
+  spec = module_spec.ModuleSpec(
       np.array([[0, 1, 0, 1],
                 [0, 0, 1, 0],
                 [0, 0, 0, 1],
                 [0, 0, 0, 0]]),
-      ['input', 'conv3x3-bn-relu', 'conv3x3-bn-relu', 'output'])
+      ['input', 'conv3x3-bn-relu', 'conv3x3-bn-relu', 'output'],
+      config['hash_algo'])
   config['num_stacks'] = 3
   config['num_modules_per_stack'] = 3
   config['stem_filter_size'] = 16
-  return spec
+
+  spec_list = []
+  for s in range(config['num_stacks']):
+  	for m in range(config['num_modules_per_stack']):
+  		spec_list.append(spec)
+
+  return spec_list
 
 
 def create_resnet50_spec(config):
@@ -68,17 +83,24 @@ def create_resnet50_spec(config):
     config: config dict created by config.py.
 
   Returns:
-    ModelSpec object.
+    ModuleSpec object.
   """
-  spec = model_spec.ModelSpec(
+  spec = module_spec.ModuleSpec(
       np.array([[0, 1, 1],
                 [0, 0, 1],
                 [0, 0, 0]]),
-      ['input', 'bottleneck3x3', 'output'])
+      ['input', 'bottleneck3x3', 'output'],
+      config['hash_algo'])
   config['num_stacks'] = 3
   config['num_modules_per_stack'] = 6
   config['stem_filter_size'] = 128
-  return spec
+  
+  spec_list = []
+  for s in range(config['num_stacks']):
+  	for m in range(config['num_modules_per_stack']):
+  		spec_list.append(spec)
+
+  return spec_list
 
 
 def create_inception_resnet_spec(config):
@@ -93,9 +115,9 @@ def create_inception_resnet_spec(config):
     config: config dict created by config.py.
 
   Returns:
-    ModelSpec object.
+    ModuleSpec object.
   """
-  spec = model_spec.ModelSpec(
+  spec = module_spec.ModuleSpec(
       np.array([[0, 1, 1, 1, 0, 1, 1],
                 [0, 0, 0, 0, 0, 0, 1],
                 [0, 0, 0, 0, 0, 0, 1],
@@ -104,23 +126,30 @@ def create_inception_resnet_spec(config):
                 [0, 0, 0, 0, 0, 0, 1],
                 [0, 0, 0, 0, 0, 0, 0]]),
       ['input', 'conv1x1-bn-relu', 'conv3x3-bn-relu', 'conv3x3-bn-relu',
-       'conv3x3-bn-relu', 'maxpool3x3', 'output'])
+       'conv3x3-bn-relu', 'maxpool3x3', 'output'],
+       config['hash_algo'])
   config['num_stacks'] = 3
   config['num_modules_per_stack'] = 3
   config['stem_filter_size'] = 128
-  return spec
+  
+  spec_list = []
+  for s in range(config['num_stacks']):
+  	for m in range(config['num_modules_per_stack']):
+  		spec_list.append(spec)
+
+  return spec_list
 
 
-def create_best_cnnbench_spec(config):
+def create_best_nasbench_spec(config):
   """Construct the best spec in the cnnbench dataset w.r.t. mean test accuracy.
 
   Args:
     config: config dict created by config.py.
 
   Returns:
-    ModelSpec object.
+    ModuleSpec object.
   """
-  spec = model_spec.ModelSpec(
+  spec = module_spec.ModuleSpec(
       np.array([[0, 1, 1, 0, 0, 1, 1],
                 [0, 0, 0, 0, 0, 1, 0],
                 [0, 0, 0, 1, 0, 0, 0],
@@ -129,11 +158,18 @@ def create_best_cnnbench_spec(config):
                 [0, 0, 0, 0, 0, 0, 1],
                 [0, 0, 0, 0, 0, 0, 0]]),
       ['input', 'conv1x1-bn-relu', 'conv3x3-bn-relu', 'maxpool3x3',
-       'conv3x3-bn-relu', 'conv3x3-bn-relu', 'output'])
+       'conv3x3-bn-relu', 'conv3x3-bn-relu', 'output'],
+       config['hash_algo'])
   config['num_stacks'] = 3
   config['num_modules_per_stack'] = 3
   config['stem_filter_size'] = 128
-  return spec
+  
+  spec_list = []
+  for s in range(config['num_stacks']):
+  	for m in range(config['num_modules_per_stack']):
+  		spec_list.append(spec)
+
+  return spec_list
 
 
 def main(_):
@@ -145,9 +181,9 @@ def main(_):
   config['train_epochs'] = 200
   config['lr_decay_method'] = 'STEPWISE'
   config['train_seconds'] = -1      # Disable training time limit
-  spec = create_best_cnnbench_spec(config)
+  spec_list = create_resnet20_spec(config)
 
-  data = evaluate.augment_and_evaluate(spec, config, FLAGS.model_dir)
+  data = evaluate.augment_and_evaluate(spec_list, config, FLAGS.model_dir)
   tf.compat.v1.logging.info(data)
 
 

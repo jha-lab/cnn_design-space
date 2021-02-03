@@ -63,12 +63,12 @@ def train_and_evaluate(spec_list, config, model_dir):
 def augment_and_evaluate(spec_list, config, model_dir, epochs_per_eval=5):
   """Trains the model on the full training set and evaluates on test set.
 
-  "Augment" spec_listifically refers to training the same spec_list in a larger network on
+  "Augment" specifically refers to training the same spec_list in a larger network on
   the full training set.  Typically this involves increasing the epoch count,
   number of modules/stacks, and changing the LR schedule. These changes should
   be made to the config dict before calling this method.
 
-  Note: this method was not used for generating the NAS Benchmark dataset. See
+  Note: this method was not used for generating the CNNBench dataset. See
   train_and_evaluate instead.
 
   Args:
