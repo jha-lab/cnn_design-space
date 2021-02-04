@@ -27,6 +27,8 @@ import numpy as np
 import tensorflow as tf
 from absl import flags
 import shutil
+import csv
+import os
 
 VALID_EXCEPTIONS = (
     tf.estimator.NanLossDuringTrainingError,  # NaN loss
@@ -50,7 +52,7 @@ def train_and_evaluate(spec_list, config, model_dir):
   dataset. The default values from the config.py are exactly the values used.
 
   Args:
-    spec_list: Modelspec_list object.
+    spec_list: spec_list object.
     config: config dict generated from config.py.
     model_dir: directory to store the checkpoint files.
 
@@ -60,19 +62,19 @@ def train_and_evaluate(spec_list, config, model_dir):
   return _train_and_evaluate_impl(spec_list, config, model_dir)
 
 
-def augment_and_evaluate(spec_list, config, model_dir, epochs_per_eval=5):
+def basic_train_and_evaluate(spec_list, config, model_dir, epochs_per_eval=5):
   """Trains the model on the full training set and evaluates on test set.
 
-  "Augment" specifically refers to training the same spec_list in a larger network on
-  the full training set.  Typically this involves increasing the epoch count,
-  number of modules/stacks, and changing the LR schedule. These changes should
-  be made to the config dict before calling this method.
+  This trains and evaluates a manually defined model that can be defined by 
+  creating a spec_list for the set of modules - (matrix, label) pairs, for any
+  given CNN model. See cnnbench/lib/run_manual_model.py for details on implementing
+  manually defined models.
 
   Note: this method was not used for generating the CNNBench dataset. See
   train_and_evaluate instead.
 
   Args:
-    spec_list: Modelspec_list object.
+    spec_list: spec_list object.
     config: config dict generated from config.py.
     model_dir: directory to store the checkpoint files.
     epochs_per_eval: number of epochs per evaluation run. Evaluation is always
@@ -81,7 +83,7 @@ def augment_and_evaluate(spec_list, config, model_dir, epochs_per_eval=5):
   Returns:
     dict containing the evaluation metadata.
   """
-  return _augment_and_evaluate_impl(spec_list, config, model_dir, epochs_per_eval)
+  return _basic_train_and_evaluate_impl(spec_list, config, model_dir, epochs_per_eval)
 
 
 def _train_and_evaluate_impl(spec_list, config, model_dir):
@@ -176,11 +178,11 @@ class _TrainAndEvaluator(object):
   def _evaluate_all(self, epochs, steps):
     """Runs all the evaluations."""
     train_accuracy = _evaluate(self.estimator, self.input_train_eval,
-                               self.config, name='train')
+                               self.config, name='train')['accuracy']
     valid_accuracy = _evaluate(self.estimator, self.input_valid,
-                               self.config, name='valid')
+                               self.config, name='valid')['accuracy']
     test_accuracy = _evaluate(self.estimator, self.input_test,
-                              self.config, name='test')
+                              self.config, name='test')['accuracy']
     train_time = self.estimator.get_variable_value(
         training_time.TOTAL_TIME_NAME)
 
@@ -217,8 +219,8 @@ class _TrainAndEvaluator(object):
     return sample_metrics
 
 
-def _augment_and_evaluate_impl(spec_list, config, model_dir, epochs_per_eval=5):
-  """Augment and evaluate implementation, see augment_and_evaluate docstring."""
+def _basic_train_and_evaluate_impl(spec_list, config, model_dir, epochs_per_eval=5):
+  """Basic model train and evaluate implementation, see basic_train_and_evaluate docstring."""
   input_augment, input_test = [
       input_pipeline.dataset_input(m, config)
       for m in ['augment', 'test']]
@@ -248,7 +250,13 @@ def _augment_and_evaluate_impl(spec_list, config, model_dir, epochs_per_eval=5):
         saving_listeners=[timing.saving_listener])
     current_step = next_step
 
-    test_accuracy = _evaluate(estimator, input_test, config)
+    results = _evaluate(estimator, input_test, config)
+    test_accuracy = results['accuracy']
+    loss = results['loss']
+
+    with open(os.path.join(model_dir, 'results_temp.csv'), mode = 'a') as csv_file:
+      csv_writer = csv.writer(csv_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+      csv_writer.writerow([test_accuracy, loss])
 
   metadata = {
       'trainable_params': _get_param_count(model_dir, config),
@@ -319,7 +327,7 @@ def _evaluate(estimator, input_data, config, name=None):
       input_fn=input_data.input_fn,
       steps=steps,
       name=name)
-  return results['accuracy']
+  return results
 
 
 def _get_param_count(model_dir, config):
