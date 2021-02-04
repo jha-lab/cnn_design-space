@@ -19,9 +19,6 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-import sys
-if '../../' not in sys.path:
-	sys.path.append('../../')
 
 from cnnbench.lib import config as _config
 from cnnbench.lib import evaluate

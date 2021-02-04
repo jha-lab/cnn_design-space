@@ -37,8 +37,8 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 logging.get_absl_handler().setFormatter(None)
 logging.set_verbosity(logging.INFO)  # or any {DEBUG, INFO, WARN, ERROR, FATAL} 
 
-flags.DEFINE_string('model_name', '', f'Model name in {models}')
-flags.DEFINE_integer('epochs_per_eval', 1, 'Number of epochs after which'
+flags.DEFINE_string('model_name', 'best_nasbench', f'Model name in {models}')
+flags.DEFINE_integer('epochs_per_eval', 5, 'Number of epochs after which'
 					'an evaluation should be done of the trained model')
 
 FLAGS = flags.FLAGS
@@ -57,7 +57,7 @@ def main(args):
 	# dataset of models. However, given more epochs and a different learning rate
 	# schedule, it is possible to get higher accuracy.
 	config = _config.build_config()
-	config['train_epochs'] = 3
+	config['train_epochs'] = 200
 	config['lr_decay_method'] = 'STEPWISE'
 	config['train_seconds'] = -1      # Disable training time limit
 	spec_list = eval(f'run_manual_model.create_{FLAGS.model_name}_spec(config)')
@@ -77,7 +77,7 @@ def main(args):
 	# Generate final outputresults file
 	accuracy_list = []
 	loss_list = []
-	with open(os.path.join(FLAGS.model_dir, 'results_temp.csv'), mode = 'r') as csv_file:
+	with open(os.path.join(FLAGS.model_dir, 'results_raw.csv'), mode = 'r') as csv_file:
 		csv_reader = csv.reader(csv_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
 		for row in csv_reader:
 			accuracy_list.append(row[0])

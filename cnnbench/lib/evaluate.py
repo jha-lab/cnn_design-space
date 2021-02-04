@@ -254,7 +254,7 @@ def _basic_train_and_evaluate_impl(spec_list, config, model_dir, epochs_per_eval
     test_accuracy = results['accuracy']
     loss = results['loss']
 
-    with open(os.path.join(model_dir, 'results_temp.csv'), mode = 'a') as csv_file:
+    with open(os.path.join(model_dir, 'results_raw.csv'), mode = 'a') as csv_file:
       csv_writer = csv.writer(csv_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
       csv_writer.writerow([test_accuracy, loss])
 
