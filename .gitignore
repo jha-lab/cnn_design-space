@@ -1,3 +1,4 @@
 **/datasets/
 *.pyc
 **/vertices_3/
+**/manual_models/

@@ -51,7 +51,7 @@ def main(args):
 	del args 
 
 	if not FLAGS.model_dir:
-		FLAGS.model_dir = f'../results/{FLAGS.model_name}_test'
+		FLAGS.model_dir = f'../results/manual_models/{FLAGS.model_name}_test'
 
 	# The default settings in config are exactly what was used to generate the
 	# dataset of models. However, given more epochs and a different learning rate
@@ -113,11 +113,10 @@ def main(args):
 
 	lines, labels = ax_acc.get_legend_handles_labels()
 	lines2, labels2 = ax_loss.get_legend_handles_labels()
-	ax_loss.legend(lines + lines2, labels + labels2)
+	ax_loss.legend(lines + lines2, labels + labels2, loc = 'lower right')
 	ax_acc.ticklabel_format(useOffset=False)
 	ax_acc.yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
 	ax_loss.yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
-	ax_acc.set_xticks(np.arange(int(epochs[0]), int(epochs[-1]+ 1), 1))
 
 	ax_acc.set_ylabel('Accuracy (%)')
 	ax_loss.set_ylabel('Loss')
