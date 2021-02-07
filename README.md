@@ -89,7 +89,7 @@ You can directly run tests on the generated dataset using a Google Colaboratory 
 
 ## Todo
 
-1. Save keras checkpoints.
+1. Implement end-to-end Keras training.
 2. Add more basic operations into `base_ops.py`.
 3. Expand model architecture - multiple matrix-label pairs, vertex add/concat options, FCNN options.
 4. Define popular networks in CNNBench framework.
