@@ -24,7 +24,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - id: todos
-        run: grep -rw './cnnbench/' -e 'TODO' | wc -l
+        run: echo "##[set-output name=data;]$(grep -rw './cnnbench/' -e 'TODO' | wc -l)"
       - name: TODOs badge
         uses: RubbaBoy/BYOB@v1.2.0
         with:
