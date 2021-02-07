@@ -89,8 +89,13 @@ You can directly run tests on the generated dataset using a Google Colaboratory 
 
 ## Todo
 
-1. Implement end-to-end Keras training.
-2. Add more basic operations into `base_ops.py`.
-3. Expand model architecture - multiple matrix-label pairs, vertex add/concat options, FCNN options.
-4. Define popular networks in CNNBench framework.
-5. Graph generation in the expanded design space starting from clusters around popular networks.
+The total number of `TODO` statements in the code are given below:
+
+![TODOs Badge](https://byob.yarr.is/JHA-Lab/cnn_design-space/todos)
+
+Other broad-level tasks left:
+1. Implement automatic hyper-parameter tuning.
+2. Define popular networks in expanded CNNBench framework.
+3. Run training on popular networks and correlate with performance in literature.
+4. Implement graph generation in the expanded design space starting from clusters around popular networks.
+5. Implement end-to-end Keras training (replacing functions running in compatibility mode)
