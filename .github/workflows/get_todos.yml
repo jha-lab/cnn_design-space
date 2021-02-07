@@ -22,6 +22,7 @@ jobs:
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
+      - uses: actions/checkout@v2
       - id: todos
         run: grep -rw './cnnbench/' -e 'TODO' | wc -l
       - name: TODOs badge
