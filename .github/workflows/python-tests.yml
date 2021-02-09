@@ -1,5 +1,5 @@
-# This workflow will install Python dependencies, run tests and lint with a single version of Python
-# For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
+# This workflow will install Python dependencies, run tests and lint on multiple versions of Python
+# Author : Shikhar Tuli (https://github.com/shikhartuli)
 
 name: tests
 
@@ -10,13 +10,29 @@ on:
     branches: [ main ]
 
 jobs:
+  # Get the number of TODO comments in code-base
+  get_todos:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - id: todos
+        name: Get TODO comments in code-base
+        run: echo "##[set-output name=data;]$(grep -rw './cnnbench/' -e 'TODO' | wc -l)"
+      - name: Generate TODOs badge
+        uses: RubbaBoy/BYOB@v1.2.0
+        with:
+          NAME: todos
+          LABEL: 'TODOs'
+          STATUS: ${{ steps.todos.outputs.data }}
+          COLOR: FFC401
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  
+  # Build and run unit-tests on different Python versions
   build:
-
     runs-on: ubuntu-latest
     strategy:
       matrix:
         python-version: [3.6, 3.7, 3.8]
-
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python ${{ matrix.python-version }}
@@ -35,18 +51,13 @@ jobs:
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Test graph utility
-      run: |
-        pytest cnnbench/tests/graph_util_test.py
+      run: pytest cnnbench/tests/graph_util_test.py
     - name: Test graph generator
-      run: |
-        pytest cnnbench/tests/generate_graphs_test.py
+      run: pytest cnnbench/tests/generate_graphs_test.py
     - name: Test module spec generator
-      run: |
-        pytest cnnbench/tests/module_spec_test.py
+      run: pytest cnnbench/tests/module_spec_test.py
     - name: Test model builder
-      run: |
-        pytest cnnbench/tests/model_builder_test.py
+      run: pytest cnnbench/tests/model_builder_test.py
     - name: Basic model run
-      run: |
-        pytest cnnbench/tests/run_evaluation_test.py
+      run: pytest cnnbench/tests/run_evaluation_test.py
     
