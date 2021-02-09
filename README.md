@@ -10,14 +10,28 @@
 This repository contains the tool **CNNBench** which can be used to generate and evaluate different Convolutional Neural Network (CNN) architectures pertinent to the domain of Machine-Learning Accelerators. 
 This repository has been forked from [nasbench](https://github.com/google-research/nasbench) and then expanded to cover a larger set of CNN architectures.
 
+## Table of Contents
+- [Environment Setup](#environment-setup)
+  - [Clone this repository](#clone-this-repository)
+  - [Setup python environment](#setup-python-environment)
+- [Basic run of the tool](#basic-run-of-the-tool)
+  - [Download and prepare the CIFAR-10 dataset](#download-and-prepare-the-cifar\-10-dataset)
+  - [Generate computational graphs](#generate-computational-graphs)
+  - [Run evaluation over all generated graphs](#run-evaluation-over-all-generated-graphs)
+  - [Generate the CNNBench dataset](#generate-the-cnnbench-dataset)
+- [Job Scripts](#job-scripts)
+- [Colab](#colab)
+- [Todo](#todo)
+  
+
 ## Environment setup
 
-1. Clone this repository
+### Clone this repository
 ```
 git clone https://github.com/JHA-Lab/cnn_design-space.git
 cd cnn_design-space
 ```
-2. Setup python environment  
+### Setup python environment  
 * **PIP**
 ```
 virtualenv cnnbench
@@ -38,7 +52,7 @@ Running a basic version of the tool comprises of the following:
 The stack of modules is followed by global average pooling and a final dense softmax layer.
 * Training on the CIFAR-10 dataset.
 
-1. Download and prepare the CIFAR-10 dataset
+### Download and prepare the CIFAR-10 dataset
 ```
 cd cnnbenchs/scripts
 python generate_tfrecords.py
@@ -46,7 +60,7 @@ python generate_tfrecords.py
 
 _To use another dataset (among CIFAR-10, CIFAR-100, MNIST, or ImageNet) use input arguments; check:_ `python generate_tfrecords.py --help`.
 
-2. Generate computational graphs
+### Generate computational graphs
 ```
 cd ../../job_scripts
 python generate_graphs_script.py
@@ -55,7 +69,7 @@ This will create a `.json` file of all graphs at: `../results/vertices_2/generat
 
 _To generate graphs of upto 'n' vertices with SHA-256 hashing algorithm, use:_ `python generate_graphs_script.py --max_vertices n --hash_algo sha256`.
 
-3. Run evaluation over all the generated graphs
+### Run evaluation over all generated graphs
 ```
 python run_evaluation_script.py
 ```
@@ -63,11 +77,11 @@ This will save all the evaluated results and model checkpoints to `../results/ve
 
 _To run evaluation over graphs generate with 'n' vertices, use:_ `python run_evaluation_script.py --module_vertices n`. _For more input arguments, check:_ `python run_evaluation_script.py --helpfull`.
 
-4. Generate the dataset `cnnbench.tfrecord`
+### Generate the CNNBench dataset
 ```
 python generate_dataset_script.py
 ```
-This generates the CNNBench dataset in a `.tfrecord` file with the evaluation results for all computational graphs that are trained.
+This generates the CNNBench dataset as a `cnnbench.tfrecord` file with the evaluation results for all computational graphs that are trained.
 
 _For visualization use:_ `visualization/cnnbench_results.ipynb`.
 
@@ -89,7 +103,7 @@ You can directly run tests on the generated dataset using a Google Colaboratory 
 
 ## Todo
 
-The total number of `TODO` statements in the code are given below:
+The total number of `TODO` statements in the code-base:
 
 ![TODOs Badge](https://byob.yarr.is/JHA-Lab/cnn_design-space/todos)
 
