@@ -108,8 +108,8 @@ The total number of `TODO` statements in the code-base:
 ![TODOs Badge](https://byob.yarr.is/JHA-Lab/cnn_design-space/todos)
 
 Other broad-level tasks left:
-1. Implement automatic hyper-parameter tuning.
-2. Define popular networks in expanded CNNBench framework.
-3. Run training on popular networks and correlate with performance in literature.
-4. Implement graph generation in the expanded design space starting from clusters around popular networks.
-5. Implement end-to-end Keras training (replacing functions running in compatibility mode)
+1. Implement end-to-end Keras training (replacing functions running in compatibility mode)
+2. Implement automatic hyper-parameter tuning.
+3. Define popular networks in expanded CNNBench framework.
+4. Run training on popular networks and correlate with performance in literature.
+5. Implement graph generation in the expanded design space starting from clusters around popular networks.
