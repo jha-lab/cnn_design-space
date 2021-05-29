@@ -115,6 +115,7 @@ def main():
         val_tar.extractall(os.path.join(args.data_dir, args.dataset, 'val'))
         val_tar.close()
 
+        # Transfer images to respective folders (based on https://github.com/pytorch/examples/tree/master/imagenet)
         request.urlretrieve('https://raw.githubusercontent.com/soumith/imagenetloader.torch/master/valprep.sh',
             os.path.join(args.data_dir, args.dataset, 'val', 'val_prep.sh'))
 
