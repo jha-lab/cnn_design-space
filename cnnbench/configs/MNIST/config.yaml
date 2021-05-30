@@ -1,0 +1,9 @@
+# Configurations for MNIST dataset
+
+dataset: MNIST
+
+data_dir: /scratch/gpfs/stuli/pytorch_datasets/
+manual_dir: null
+
+train_batch_size: 512
+test_batch_size: 1024

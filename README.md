@@ -3,7 +3,7 @@
 ![Python Version](https://img.shields.io/badge/python-v3.6%20%7C%20v3.7%20%7C%20v3.8-blue)
 ![Conda](https://img.shields.io/badge/conda%7Cconda--forge-v4.8.3-blue)
 ![Tensorflow](https://img.shields.io/badge/tensorflow--gpu-v2.2-orange)
-![Commits Since Last Release](https://img.shields.io/github/commits-since/JHA-Lab/cnn_design-space/v0.2/main)
+<!-- ![Commits Since Last Release](https://img.shields.io/github/commits-since/JHA-Lab/cnn_design-space/v0.2/main) -->
 ![Tests](https://github.com/JHA-Lab/cnn_design-space/workflows/tests/badge.svg)
 <!-- ![Hits](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2FJHA-Lab%2Fcnn_design-space&count_bg=%23FFC401&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=hits&edge_flat=false) -->
 
@@ -103,12 +103,13 @@ You can directly run tests on the generated dataset using a Google Colaboratory 
 
 ## Todo
 
-The total number of `TODO` statements in the code-base:
+<!-- The total number of `TODO` statements in the code-base:
 
-![TODOs Badge](https://byob.yarr.is/JHA-Lab/cnn_design-space/todos)
+![TODOs Badge](https://byob.yarr.is/JHA-Lab/cnn_design-space/todos) -->
 
-Other broad-level tasks left:
-1. Implement end-to-end Keras training (replacing functions running in compatibility mode)
+Broad-level tasks left:
+
+1. Implement end-to-end PyTorch training (replacing functions running in compatibility mode)
 2. Implement automatic hyper-parameter tuning.
 3. Define popular networks in expanded CNNBench framework.
 4. Run training on popular networks and correlate with performance in literature.
