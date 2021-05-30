@@ -140,8 +140,8 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    config = {'dataset': config['dataset'],
-              'data_dir': config['data_dir'],
-              'manual_dir': config['manual_dir']}
+    config = {'dataset': args.dataset,
+              'data_dir': args.data_dir,
+              'manual_dir': args.manual_dir}
     
     data_downloader(config)
