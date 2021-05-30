@@ -61,8 +61,8 @@ def data_downloader(config: dict):
     assert (config['dataset'] == 'ImageNet') == (config['manual_dir'] is not None), \
         'ImageNet is required to be manually downloaded'
 
-    print(f'{pu.bcolors.OKBLUE}Setting up dataset:{pu.bcolors.ENDC} {config['dataset']}'\
-        + f'{pu.bcolors.OKBLUE}, into directory:{pu.bcolors.ENDC} {config['data_dir']}')
+    print(f"{pu.bcolors.OKBLUE}Setting up dataset:{pu.bcolors.ENDC} {config['dataset']}"\
+        + f"{pu.bcolors.OKBLUE}, into directory:{pu.bcolors.ENDC} {config['data_dir']}")
 
     if config['manual_dir'] is None:
         # Download the dataset
