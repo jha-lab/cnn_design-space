@@ -58,7 +58,7 @@ def data_downloader(config: dict):
 
     assert config['dataset'] in DATASET_PRESETS.keys(), f'Dataset needs to be in {__name__}.DATASET_PRESETS'
 
-    assert (config['dataset'] == 'ImageNet') == (config['manual_dir'] is not None), 
+    assert (config['dataset'] == 'ImageNet') == (config['manual_dir'] is not None), \
         'ImageNet is required to be manually downloaded'
 
     print(f'{pu.bcolors.OKBLUE}Setting up dataset:{pu.bcolors.ENDC} {config['dataset']}'\
