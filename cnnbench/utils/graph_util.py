@@ -88,7 +88,7 @@ def hash_module(matrix, labeling, algo='md5'):
     algo: hash algorithm among ["md5", "sha256", "sha512"]
 
     Returns:
-    Hash of the matrix and labeling based on algo.
+        Hash of the matrix and labeling based on algo.
     """
     vertices = np.shape(matrix)[0]
     in_edges = np.sum(matrix, axis=0).tolist()
@@ -102,13 +102,13 @@ def hash_module(matrix, labeling, algo='md5'):
     # operation is fast, it is okay to repeat more times.
     for _ in range(vertices):
         new_hashes = []
-    for v in range(vertices):
-        in_neighbors = [hashes[w] for w in range(vertices) if matrix[w, v]]
-        out_neighbors = [hashes[w] for w in range(vertices) if matrix[v, w]]
-        new_hashes.append(hash_func(
-            (''.join(sorted(in_neighbors)) + '|' +
-            ''.join(sorted(out_neighbors)) + '|' +
-            hashes[v]).encode('utf-8'), algo).hexdigest())
+        for v in range(vertices):
+            in_neighbors = [hashes[w] for w in range(vertices) if matrix[w, v]]
+            out_neighbors = [hashes[w] for w in range(vertices) if matrix[v, w]]
+            new_hashes.append(hash_func(
+                (''.join(sorted(in_neighbors)) + '|' +
+                ''.join(sorted(out_neighbors)) + '|' +
+                hashes[v]).encode('utf-8'), algo).hexdigest())
         hashes = new_hashes
     fingerprint = hash_func(str(sorted(hashes)).encode('utf-8'), algo).hexdigest()
 
@@ -192,7 +192,7 @@ def merge_modules(module1, module2):
     for i, j in itertools.product(range(size_2), range(size_2)):
         new_matrix[i+size_1-2, j+size_1-2] = np.array(module2[0])[i, j] 
 
-    new_module = (new_matrix.astype(int).tolist(), module1[1][:-1] + module2[1][1:])
+    new_module = (new_matrix.astype(np.int8), module1[1][:-1] + module2[1][1:])
 
     return new_module
 
@@ -258,3 +258,20 @@ def compare_modules(matrix1, matrix2):
             return True
 
     return False
+
+
+def generate_dissimilarity_matrix(graph_list: list, kernel='WeisfeilerLehman', n_jobs=8):
+    """Generate the dissimilarity matrix which is N x N, for N graphs 
+    in the design space
+    
+    Args:
+        graph_list (list[list[tuple(np.ndarray, list[str])]): list of graphs, which are lists of
+            tuples of adjacency matrix and ops
+        kernel (str, optional): the kernel to be used for computing the dissimilarity matrix. The
+            default value is 'WeisfeilerLehman'
+        n_jobs (int, optional): number of parrallel jobs for joblib
+    
+    Returns:
+        dissimilarity_matrix (np.ndarray): dissimilarity matrix
+    """
+    raise NotImplementedError

@@ -12,3 +12,4 @@ conda activate cnnbench
 
 # Install dependencies
 conda install pyyaml
+conda install scikit-learn
