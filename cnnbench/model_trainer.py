@@ -115,10 +115,11 @@ def worker(config: dict, graphObject: 'Graph', device: 'torch.device' = None):
 				test_loss, correct, len(test_loader.dataset),
 				100. * correct / len(test_loader.dataset)))
 
-		if 'scheduler' in config.keys() and config['scheduler'] == 'ReduceLROnPlateau':
-			scheduler.step(test_loss)
-		elif 'scheduler' in config.keys():
-			scheduler.step()
+		if 'scheduler' in config.keys():
+			if config['scheduler'] == 'ReduceLROnPlateau':
+				scheduler.step(test_loss)
+			elif config['scheduler'] != 'CosineAnnealingWarmRestarts':
+				scheduler.step()
 
 	if not os.path.exists(os.path.join(config['models_dir'], config['dataset'], graphObject.hash)):
 		os.makedirs(os.path.join(config['models_dir'], config['dataset'], graphObject.hash))
