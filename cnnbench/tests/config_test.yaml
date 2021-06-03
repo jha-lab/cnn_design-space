@@ -4,15 +4,24 @@
 dataset: CIFAR10
 classes: 10
 input_channels: 3
-image_size: 28
+image_size: 32
 
 # Dataset directories
 data_dir: /scratch/gpfs/stuli/pytorch_datasets/
 manual_dir: null
 
+# Directory for storing models
+models_dir: /scratch/gpfs/stuli/cnnbench_models/
+
 # Training parameters
+epochs: 10
 train_batch_size: 256
-test_batch_size: 512 
+test_batch_size: 512
+optimizer: Adam
+lr: 0.001 
+scheduler: CosineAnnealingWarmRestarts
+scheduler_args:
+  T_0: 5
 
 # Architecture parameters
 module_vertices: 4
