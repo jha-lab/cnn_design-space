@@ -62,9 +62,16 @@ def get_loader(config: dict):
         train_transforms.insert(0, transforms.RandomHorizontalFlip())
 
     if DATASET_PRESETS[dataset]['inception_crop']:
-        train_transforms.insert(0, transforms.RandomResizedCrop(224))
-        test_transforms.insert(0, transforms.CenterCrop(224))
+        train_transforms.insert(0, transforms.RandomResizedCrop(config['image_size']))
+
+        test_transforms.insert(0, transforms.CenterCrop(config['image_size']))
         test_transforms.insert(0, transforms.Resize(256))
+    else:
+        train_transforms.insert(0, transforms.Resize(config['image_size']))
+        test_transforms.insert(0, transforms.Resize(config['image_size']))
+
+    train_transforms = transforms.Compose(train_transforms)
+    test_transforms = transforms.Compose(test_transforms)
 
     # Loading the dataset already downloaded
     if dataset != 'ImageNet':

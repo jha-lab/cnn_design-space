@@ -56,16 +56,16 @@ class CNNBenchModel(nn.Module):
 
 					layer = f'op_m{i}_v{v}'
 					setattr(self, layer, self.get_op_layer(source_channels, labels[v], vertex_channels[v]))
-					setattr(self, f'proj_m{i}_v{v}', self.projection(input_channels, vertex_channels[v]))
+					setattr(self, f'proj_m{i}_v{v}', self.projection(input_channels, source_channels))
 
 				setattr(self, f'proj_m{i}', self.projection(input_channels, vertex_channels[-1]))
 
 			else:
 				if labels[1] == 'flatten':
 					x = torch.rand(1, self.config['input_channels'], self.config['image_size'], self.config['image_size'])
-					for conv_layer in range(len(self.graphObject.graph) - 1):
-						matrix_conv, labels_conv = self.graphObject.graph[conv_layer]
-						x = self.run_module(input=x, module_idx=conv_layer, matrix=matrix_conv, labels=labels_conv)
+					for j in range(len(self.graphObject.graph) - 1):
+						matrix_conv, labels_conv = self.graphObject.graph[j]
+						x = self.run_module(input=x, module_idx=j, matrix=matrix_conv, labels=labels_conv)
 					input_to_head = torch.flatten(x, start_dim=1)
 					input_channels = input_to_head.shape[1]
 				for v in range(2, num_vertices - 1):
@@ -88,6 +88,16 @@ class CNNBenchModel(nn.Module):
 				x = self.run_head(input=x, module_idx=i, matrix=matrix, labels=labels)
 
 		return x
+
+	def get_params(self):
+		"""Get total number of trainable parameters of the model."""
+		total_params = 0
+		for name, param in self.named_params.items():
+			if not param.requires_grad(): continue
+			num_params = param.numel()
+			total_params += num_params
+
+		return total_params
 
 	def run_module(self, input, module_idx, matrix, labels):
 		"""Run a custom module using a proposed model spec.
@@ -226,6 +236,11 @@ class CNNBenchModel(nn.Module):
 				stride = self.config['default_stride'] if stride is None \
 					else stride.group(0)[2:] 
 
+				if channels is not None and channels > input_channels:
+					return nn.Sequential(nn.MaxPool2d(kernel_size=(int(kernel_size[0]), 
+											int(kernel_size[1])),
+											stride=int(stride)),
+										self.projection(input_channels, channels))
 				return nn.MaxPool2d(kernel_size=(int(kernel_size[0]), int(kernel_size[1])),
 									stride=int(stride))
 
@@ -238,6 +253,11 @@ class CNNBenchModel(nn.Module):
 				stride = self.config['default_stride'] if stride is None \
 					else stride.group(0)[2:] 
 
+				if channels is not None and channels > input_channels:
+					return nn.Sequential(nn.AvgPool2d(kernel_size=(int(kernel_size[0]), 
+											int(kernel_size[1])),
+											stride=int(stride)),
+										self.projection(input_channels, channels))
 				return nn.AvgPool2d(kernel_size=(int(kernel_size[0]), int(kernel_size[1])),
 									stride=int(stride))
 
@@ -296,8 +316,8 @@ class CNNBenchModel(nn.Module):
 				channels = re.search('-c([0-9]+)', labels[v])
 				vertex_channels[v] = int(channels.group(0)[2:]) if channels is not None else self.config['default_channels']
 			elif v != num_vertices - 1:
-				# For pooling layers, output channels are based on maximum channels
-				# from the inputs it is connected to
+				# For pooling layers, desired output channels are the same as the
+				# input channels
 				max_input_channels = 0
 				for src in range(v):
 					if matrix[src, v]: 
