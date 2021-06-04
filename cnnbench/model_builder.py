@@ -63,6 +63,7 @@ class CNNBenchModel(nn.Module):
 			else:
 				if labels[1] == 'flatten':
 					x = torch.rand(1, self.config['input_channels'], self.config['image_size'], self.config['image_size'])
+					self.eval()
 					for j in range(len(self.graphObject.graph) - 1):
 						matrix_conv, labels_conv = self.graphObject.graph[j]
 						x = self.run_module(input=x, module_idx=j, matrix=matrix_conv, labels=labels_conv)
@@ -92,8 +93,8 @@ class CNNBenchModel(nn.Module):
 	def get_params(self):
 		"""Get total number of trainable parameters of the model."""
 		total_params = 0
-		for name, param in self.named_params.items():
-			if not param.requires_grad(): continue
+		for param in self.parameters():
+			if not param.requires_grad: continue
 			num_params = param.numel()
 			total_params += num_params
 
@@ -188,100 +189,142 @@ class CNNBenchModel(nn.Module):
 
 	def get_op_layer(self, input_channels, op, channels: int = None):
 		"""Get the torch.nn output corresponding to the given operation."""
-		if op in self.config['base_ops']:
-			if op.startswith('conv'):
-				assert channels is not None
+		if op.startswith('conv'):
+			assert channels is not None
 
-				channels_conv = re.search('-c([0-9]+)', op)
-				channels_conv = self.config['default_channels'] if channels_conv is None \
-					else channels_conv.group(0)[2:] 
+			channels_conv = re.search('-c([0-9]+)', op)
+			channels_conv = self.config['default_channels'] if channels_conv is None \
+				else int(channels_conv.group(0)[2:])
 
-				assert channels >= channels_conv
+			assert channels >= channels_conv
 
-				kernel_size = re.search('([0-9]+)x([0-9]+)', op)
-				assert kernel_size is not None
-				kernel_size = kernel_size.group(0).split('x')
+			kernel_size = re.search('([0-9]+)x([0-9]+)', op)
+			assert kernel_size is not None
+			kernel_size = kernel_size.group(0).split('x')
 
-				stride = re.search('-s([0-9]+)', op)
-				stride = self.config['default_stride'] if stride is None \
-					else stride.group(0)[2:] 
+			stride = re.search('-s([0-9]+)', op)
+			stride = 1 if stride is None \
+				else stride.group(0)[2:] 
 
-				non_linearity = op.split('-')[-1]
-
-				activations = [act[0] for act in getmembers(nn.modules.activation)]
-				activations_lower = [act.lower() for act in activations]
-
-				try:
-					index = activations_lower.index(non_linearity)
-				except:
-					raise ValueError('Non linearity not supported in PyTorch')
-
-				layer = nn.Sequential(
-							nn.Conv2d(input_channels, 
-									channels, 
-									kernel_size=(int(kernel_size[0]), int(kernel_size[1])),
-									stride=int(stride)),
-							nn.BatchNorm2d(channels),
-							eval(f'nn.{activations[index]}()')
-							)
-
-				return layer
-
-			elif op.startswith('maxpool'):
-				kernel_size = re.search('([0-9]+)x([0-9]+)', op)
-				assert kernel_size is not None
-				kernel_size = kernel_size.group(0).split('x')
-
-				stride = re.search('-s([0-9]+)', op)
-				stride = self.config['default_stride'] if stride is None \
-					else stride.group(0)[2:] 
-
-				if channels is not None and channels > input_channels:
-					return nn.Sequential(nn.MaxPool2d(kernel_size=(int(kernel_size[0]), 
-											int(kernel_size[1])),
-											stride=int(stride)),
-										self.projection(input_channels, channels))
-				return nn.MaxPool2d(kernel_size=(int(kernel_size[0]), int(kernel_size[1])),
-									stride=int(stride))
-
-			elif op.startswith('avgpool'):
-				kernel_size = re.search('([0-9]+)x([0-9]+)', op)
-				assert kernel_size is not None
-				kernel_size = kernel_size.group(0).split('x')
-
-				stride = re.search('-s([0-9]+)', op)
-				stride = self.config['default_stride'] if stride is None \
-					else stride.group(0)[2:] 
-
-				if channels is not None and channels > input_channels:
-					return nn.Sequential(nn.AvgPool2d(kernel_size=(int(kernel_size[0]), 
-											int(kernel_size[1])),
-											stride=int(stride)),
-										self.projection(input_channels, channels))
-				return nn.AvgPool2d(kernel_size=(int(kernel_size[0]), int(kernel_size[1])),
-									stride=int(stride))
-
+			if '-dw' in op:
+				# Depth-wise convolution
+				groups = input_channels
 			else:
-				raise ValueError(f'Operation {op} in "base_ops" not supported')
+				groups = re.search('-g([0-9]+)', op)
+				groups = 1 if groups is None \
+					else groups.group(0)[2:] 
 
-		elif op in self.config['dense_ops']:
-			if op.startswith('dense-'):
-				size = re.search('([0-9]+)', op)
-				return nn.Linear(input_channels, int(size))
+			if '-ps' in op:
+				if stride == 1:
+					padding = ((kernel_size[0] - 1) // 2, (kernel_size[1] - 1) // 2)
+				else:
+					raise ValueError(f'Same padding only supported with stride = 1')
+			else:		
+				padding = re.search('-p([0-9]+)', op)
+				padding = 0 if padding is None else padding.group(0)[2:]
 
-			elif op.startswith('dropout'):
-				prob = re.search('([0-9]+)', op)
-				assert prob is not None
-				return nn.Dropout(p=float('0.' + prob.group(0)))
+			non_linearity = op.split('-')[-1]
 
-			else:
-				raise ValueError(f'Operation {op} in "dense_ops" not supported')
+			activations = [act[0] for act in getmembers(nn.modules.activation)]
+			activations_lower = [act.lower() for act in activations]
+
+			try:
+				index = activations_lower.index(non_linearity)
+			except:
+				raise ValueError('Non linearity not supported in PyTorch')
+
+			layer = nn.Sequential(
+						nn.Conv2d(input_channels, 
+								channels, 
+								kernel_size=(int(kernel_size[0]), int(kernel_size[1])),
+								stride=int(stride),
+								padding=int(padding),
+								groups=int(groups),
+								bias=False),
+						nn.BatchNorm2d(channels),
+						eval(f'nn.{activations[index]}(inplace=True)')
+						)
+
+			return layer
+
+		elif op.startswith('channel_shuffle'):
+			groups = re.search('-g([0-9]+)', op)
+			groups = 1 if groups is None \
+				else groups.group(0)[2:] 
+
+			return ChannelShuffle(groups=groups)
+
+		elif op.startswith('maxpool'):
+			kernel_size = re.search('([0-9]+)x([0-9]+)', op)
+			assert kernel_size is not None
+			kernel_size = kernel_size.group(0).split('x')
+
+			stride = re.search('-s([0-9]+)', op)
+			stride = 1 if stride is None \
+				else stride.group(0)[2:] 
+
+			padding = re.search('-p([0-9]+)', op)
+			padding = 0 if padding is None else padding.group(0)[2:]
+
+			if channels is not None and channels > input_channels:
+				return nn.Sequential(nn.MaxPool2d(kernel_size=(int(kernel_size[0]), 
+										int(kernel_size[1])),
+										stride=int(stride),
+										padding=int(padding)),
+									self.projection(input_channels, channels))
+			return nn.MaxPool2d(kernel_size=(int(kernel_size[0]), int(kernel_size[1])),
+								stride=int(stride), padding=int(padding))
+
+		elif op.startswith('avgpool'):
+			kernel_size = re.search('([0-9]+)x([0-9]+)', op)
+			assert kernel_size is not None
+			kernel_size = kernel_size.group(0).split('x')
+
+			stride = re.search('-s([0-9]+)', op)
+			stride = 1 if stride is None \
+				else stride.group(0)[2:] 
+
+			padding = re.search('-p([0-9]+)', op)
+			padding = 0 if padding is None else padding.group(0)[2:]
+
+			if channels is not None and channels > input_channels:
+				return nn.Sequential(nn.AvgPool2d(kernel_size=(int(kernel_size[0]), 
+										int(kernel_size[1])),
+										stride=int(stride),
+										padding=int(padding)),
+									self.projection(input_channels, channels))
+			return nn.AvgPool2d(kernel_size=(int(kernel_size[0]), int(kernel_size[1])),
+								stride=int(stride), padding=int(padding))
+
+		elif op.startswith('dense-'):
+			size = re.search('([0-9]+)', op)
+
+			size = self.config['classes'] if size is None \
+				else size.group(0)
+
+			non_linearity = op.split('-')[-1]
+
+			activations = [act[0] for act in getmembers(nn.modules.activation)]
+			activations_lower = [act.lower() for act in activations]
+
+			try:
+				index = activations_lower.index(non_linearity)
+			except:
+				raise ValueError('Non linearity not supported in PyTorch')
+
+			return nn.Sequential(nn.Linear(input_channels, int(size)),
+									eval(f'nn.{activations[index]}(inplace=True)'))
+
+		elif op.startswith('dropout'):
+			prob = re.search('([0-9]+)', op)
+			assert prob is not None
+			return nn.Dropout(p=float('0.' + prob.group(0)))
 
 		elif op.startswith('dense_classes'):
-				return nn.Linear(input_channels, int(self.config['classes']))
+			return nn.Linear(input_channels, int(self.config['classes']))
 
 		else:
-			raise ValueError(f'Operation {op} in not found in the configuration')
+			raise ValueError(f'Error implementing {op} in model_builder.get_op_layer()')
 
 	def projection(self, input_channels, output_channels):
 		"""1x1 projection (as in ResNet) followed by batch normalization and ReLU."""
@@ -378,3 +421,15 @@ class CNNBenchModel(nn.Module):
 		assert all([vertex_channels[v] >= desired_vertex_channels[v] for v in range(num_vertices)])
 
 		return vertex_channels
+
+
+class ChannelShuffle(nn.Module):
+    def __init__(self, groups: int):
+        super().__init__()
+        self.groups = groups
+
+    def forward(self, x):
+        '''Channel shuffle: [N,C,H,W] -> [N,g,C/g,H,W] -> [N,C/g,g,H,w] -> [N,C,H,W]'''
+        N, C, H, W = x.size()
+
+        return x.view(N, self.groups, C // self.groups, H, W).permute(0, 2, 1, 3, 4).reshape(N, C, H, W)
