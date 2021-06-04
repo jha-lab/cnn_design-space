@@ -4,7 +4,7 @@
 dataset: CIFAR10
 classes: 10
 input_channels: 3
-image_size: 32
+image_size: 64
 
 # Dataset directories
 data_dir: /scratch/gpfs/stuli/pytorch_datasets/
