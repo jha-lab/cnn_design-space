@@ -3,8 +3,14 @@
 # Script to install required packages in conda for GPU setup
 # Author : Shikhar Tuli
 
-module load anaconda3
-conda create --name cnnbench tensorflow-gpu
+module load anaconda3/2020.11
+
+# Create a new conda environment
+conda create --name cnnbench pytorch torchvision cudatoolkit=11.1 -c pytorch -c nvidia
 
 conda activate cnnbench
-conda install -c powerai tensorflow-datasets
+
+# Install dependencies
+conda install pyyaml
+conda install scikit-learn
+conda install -c conda-forge tqdm ipywidgets matplotlib
