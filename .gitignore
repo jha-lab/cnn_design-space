@@ -3,7 +3,7 @@
 **/vertices_3/
 **/manual_models/
 **/.ipynb_checkpoints/
-./results/
+./results/**
 ./job_scripts/**
 **/old/
 *.slurm
