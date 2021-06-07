@@ -3,6 +3,9 @@
 # Author :  Shikhar Tuli
 
 
+import math
+
+
 class bcolors:
   HEADER = '\033[95m'
   OKBLUE = '\033[94m'
@@ -13,3 +16,16 @@ class bcolors:
   ENDC = '\033[0m'
   BOLD = '\033[1m'
   UNDERLINE = '\033[4m'
+
+
+def human_format(num, precision=2, separator=''):
+    magnitude = 0
+
+    while abs(num) >= 1000:
+        magnitude += 1
+        num /= 1000.0
+
+    suffixes = ['', 'K', 'M', 'G', 'T', 'P', 'Qa', 'Qt']
+
+    return '{num:.{precision}f}{separator}{suffix}'.format(
+        num=num, precision=precision, separator=separator, suffix=suffixes[magnitude])
