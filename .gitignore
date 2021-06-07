@@ -4,7 +4,7 @@
 **/manual_models/
 **/.ipynb_checkpoints/
 ./results/
-./job_scripts/
+./job_scripts/**
 **/old/
 *.slurm
 *.out
