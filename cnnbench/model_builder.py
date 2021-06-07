@@ -13,6 +13,7 @@ import torch.nn.functional as F
 import re
 from inspect import getmembers
 import numpy as np
+import functools
 
 from library import GraphLib, Graph
 from utils import print_util as pu
@@ -73,7 +74,7 @@ class CNNBenchModel(nn.Module):
 					# vertex starts with 2 since 1 has a flatten_op which is not a torch.nn function
 					layer = f'op_m{i}_v{v}'
 					setattr(self, layer, self.get_op_layer(input_channels, labels[v]))
-					if layer[v].startswith('dense'): input_channels = int(layer[v].split('-')[1])
+					if labels[v].startswith('dense-'): input_channels = int(labels[v].split('-')[1])
 
 	def forward(self, x):
 		"""Forward computation of the current CNNBenchModel
@@ -132,12 +133,12 @@ class CNNBenchModel(nn.Module):
 				max_size = max([tensor.shape[2] for tensor in add_in])
 				for i in range(len(add_in)):
 					add_in[i] = F.interpolate(add_in[i], size=(max_size, max_size))
-				vertex_input = torch.sum(torch.stack(add_in, dim=0), dim=0)
+				vertex_input = functools.reduce(torch.add, add_in)
 			elif len(add_in) > 0:
 				max_size = max([tensor.shape[2] for tensor in add_in])
 				for i in range(len(add_in)):
 					add_in[i] = F.interpolate(add_in[i], size=(max_size, max_size))
-				vertex_input = torch.sum(torch.stack(add_in, dim=0), dim=0)
+				vertex_input = functools.reduce(torch.add, add_in)
 			else:
 				raise ValueError(f'Node: {v} has no connected inputs')
 
@@ -163,8 +164,8 @@ class CNNBenchModel(nn.Module):
 				output = torch.cat(final_concat_in, dim=CHANNEL_AXIS)
 
 			if matrix[0, num_vertices - 1]:
-				output += F.interpolate(getattr(self, f'proj_m{module_idx}')(tensors[0]),
-							size=(output.shape[2], output.shape[3]))
+				output = torch.sum(torch.stack([output, F.interpolate(getattr(self, f'proj_m{module_idx}')(tensors[0]),
+							size=(output.shape[2], output.shape[3]))], dim=0), dim=0)
 
 		return output
 
@@ -175,13 +176,12 @@ class CNNBenchModel(nn.Module):
 		for v in range(1, num_vertices - 1):
 			if v == 1:
 				op = labels[v]
-				if op in self.config['flatten_ops']:
-					if op.startswith('global-avg-pool'):
-						input = torch.mean(input, dim=[2, 3])
-					elif op.startswith('flatten'):
-						input = torch.flatten(input, start_dim=1)
-					else:
-						raise ValueError(f'Operation {op} in "flatten_ops" not supported')
+				if op.startswith('global-avg-pool'):
+					input = torch.mean(input, dim=[2, 3])
+				elif op.startswith('flatten'):
+					input = torch.flatten(input, start_dim=1)
+				else:
+					raise ValueError(f'Operation {op} in "flatten_ops" not supported')
 			else:
 				input = getattr(self, f'op_m{module_idx}_v{v}')(input)
 
@@ -213,6 +213,11 @@ class CNNBenchModel(nn.Module):
 				groups = re.search('-g([0-9]+)', op)
 				groups = 1 if groups is None \
 					else groups.group(0)[2:] 
+
+			# Correcting groups if channels % groups != 0
+			groups = int(groups)
+			while channels % groups != 0 or input_channels % groups != 0:
+				groups -= 1
 
 			if '-ps' in op:
 				if stride == 1:
@@ -252,7 +257,7 @@ class CNNBenchModel(nn.Module):
 			groups = 1 if groups is None \
 				else groups.group(0)[2:] 
 
-			return ChannelShuffle(groups=groups)
+			return ChannelShuffle(groups=int(groups))
 
 		elif op.startswith('maxpool'):
 			kernel_size = re.search('([0-9]+)x([0-9]+)', op)

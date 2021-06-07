@@ -96,9 +96,9 @@ def get_loader(config: dict):
         print(test_dataset)
 
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=config['train_batch_size'],
-                            shuffle=True, pin_memory=True)
+                            shuffle=True, pin_memory=True, num_workers=8)
     test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=config['test_batch_size'],
-                            shuffle=False, pin_memory=True)
+                            shuffle=False, pin_memory=True, num_workers=8)
 
     return train_loader, test_loader
 
