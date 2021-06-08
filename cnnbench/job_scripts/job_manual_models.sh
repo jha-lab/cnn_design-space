@@ -3,8 +3,8 @@
 # Sript to run manually defined models in the CNN design space
 # Author : Shikhar Tuli
 
-manual_models=("lenet" "alexnet" "vgg11" "vgg13" "vgg19" "resnet18" "resnet34" "resnet50" "resnet101" "resnet152" "shufflenet" \
-	"googlenet" "xception")
+manual_models=("lenet" "alexnet" "vgg11" "vgg13" "vgg16" "vgg19" "resnet18" "resnet34" "resnet50" "resnet101" "resnet152" "shufflenet" \
+	"mobilenet" "googlenet" "xception")
 cluster="della"
 id="stuli"
 nodes="ee"

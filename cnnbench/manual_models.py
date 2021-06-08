@@ -17,7 +17,7 @@ from utils import graph_util, print_util as pu
 
 
 SUPPORTED_MODELS = ['lenet', 'alexnet', 'vgg11', 'vgg13',
-					'vgg19', 'resnet18', 'resnet34', 
+					'vgg16', 'vgg19', 'resnet18', 'resnet34', 
 					'resnet50', 'resnet101', 'resnet152',
 					'shufflenet', 'mobilenet', 'googlenet',
 					'inception', 'xception']
