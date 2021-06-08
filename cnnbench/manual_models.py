@@ -443,8 +443,8 @@ def get_manual_graph(config: dict, model_name: str):
 		for i in range(len(channels)):
 			if i == 0: input_channels = 32
 			
-			conv_module = (np.eye(4, k=1, dtype=np.int),
-				['input', f'conv3x3-c{input_channels}-dw-s{strides[i]}-bn-relu', 
+			conv_module = (np.eye(4, k=1, dtype=np.int8),
+				['input', f'conv3x3-c{input_channels}-dw-s{strides[i]}-p1-bn-relu', 
 				f'conv1x1-c{channels[i]}-s1-bn-relu', 'output'])
 			input_channels = channels[i]
 
