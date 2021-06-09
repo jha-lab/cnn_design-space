@@ -238,17 +238,31 @@ class CNNBenchModel(nn.Module):
 			except:
 				raise ValueError('Non linearity not supported in PyTorch')
 
-			layer = nn.Sequential(
-						nn.Conv2d(input_channels, 
-								channels, 
-								kernel_size=(int(kernel_size[0]), int(kernel_size[1])),
-								stride=int(stride),
-								padding=int(padding),
-								groups=int(groups),
-								bias=False),
-						nn.BatchNorm2d(channels),
-						eval(f'nn.{activations[index]}(inplace=True)')
-						)
+			if channels == channels_conv:
+				layer = nn.Sequential(
+							nn.Conv2d(input_channels, 
+									channels_conv, 
+									kernel_size=(int(kernel_size[0]), int(kernel_size[1])),
+									stride=int(stride),
+									padding=int(padding),
+									groups=int(groups),
+									bias=False),
+							nn.BatchNorm2d(channels),
+							eval(f'nn.{activations[index]}(inplace=True)')
+							)
+			else:
+				layer = nn.Sequential(
+							nn.Conv2d(input_channels, 
+									channels_conv, 
+									kernel_size=(int(kernel_size[0]), int(kernel_size[1])),
+									stride=int(stride),
+									padding=int(padding),
+									groups=int(groups),
+									bias=False),
+							nn.BatchNorm2d(channels_conv),
+							eval(f'nn.{activations[index]}(inplace=True)'),
+							self.projection(channels_conv, channels)
+							)
 
 			return layer
 
