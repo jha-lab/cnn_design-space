@@ -16,12 +16,12 @@ from utils import print_util as pu
 DATASET_PRESETS = {
     'CIFAR10': {
         'horizontal_flip': True,
-        'inception_crop': False,
+        'inception_crop': True,
         'normalize': ((0.4914, 0.4822, 0.4465), (0.247, 0.243, 0.261))
     },
     'CIFAR100': {
         'horizontal_flip': True,
-        'inception_crop': False,
+        'inception_crop': True,
         'normalize': ((0.4914, 0.4822, 0.4465), (0.247, 0.243, 0.261))
     },
     'MNIST': {
@@ -96,9 +96,9 @@ def get_loader(config: dict):
         print(test_dataset)
 
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=config['train_batch_size'],
-                            shuffle=True, pin_memory=True, num_workers=8)
+                            shuffle=True, pin_memory=True, num_workers=16)
     test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=config['test_batch_size'],
-                            shuffle=False, pin_memory=True, num_workers=8)
+                            shuffle=False, pin_memory=True, num_workers=16)
 
     return train_loader, test_loader
 

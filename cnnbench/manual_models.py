@@ -583,6 +583,12 @@ if __name__ == '__main__':
 	  default='alexnet',
 	  help=f'Name of the manual model to train. Should be in: {SUPPORTED_MODELS}')
 	parser.add_argument(
+	  '--model_dir',
+	  metavar='',
+	  type=str,
+	  default=None,
+	  help=f'Name of the directory to save the model. Defaults to "../results/manual_models/<model_name>"')
+	parser.add_argument(
 	  '--device',
 	  metavar='',
 	  type=str,
@@ -603,5 +609,9 @@ if __name__ == '__main__':
 	if args.device is not None:
 		device = torch.device(args.device)
 
-	model_dir = os.path.join('../results/manual_models/', args.model_name)
+	if args.model_dir is None:
+		model_dir = os.path.join('../results/manual_models/', args.model_name)
+	else:
+		model_dir = args.model_dir
+	
 	worker(config, model_graph, device, model_dir)
