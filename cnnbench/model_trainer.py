@@ -21,11 +21,16 @@ from model_builder import CNNBenchModel
 from library import GraphLib, Graph
 from utils import print_util as pu
 
+import matplotlib as mpl
+mpl.use('Agg')
+
+from matplotlib import pyplot as plt
+
 
 LOG_INTERVAL = 10
 
 
-def worker(config: dict, graphObject: 'Graph', device: torch.device = None, model_dir: str = None):
+def worker(config: dict, graphObject: 'Graph', device: torch.device = None, model_dir: str = None, save_fig=True):
 	"""Trains a CNN model on a given device
 	
 	Args:
@@ -33,6 +38,7 @@ def worker(config: dict, graphObject: 'Graph', device: torch.device = None, mode
 	    graphObject (Graph): Graph object
 	    device (torch.device, optional): cuda device
 	    model_dir (str, optional): directory to store the model and metrics
+	    save_fig (bool, optional): to save the learning curves
 	
 	Raises:
 	    ValueError: if an input parameter is not supported, or GPU device isn't found
@@ -50,6 +56,24 @@ def worker(config: dict, graphObject: 'Graph', device: torch.device = None, mode
 	model = CNNBenchModel(config, graphObject)
 
 	model_params = model.get_params()
+
+	if 'manual_models' in model_dir:
+		model_name = model_dir.split('/')[-1]
+	else:
+		model_name = graphObject.hash
+
+	if model_dir is None:
+		if not os.path.exists(os.path.join(config['models_dir'], config['dataset'], graphObject.hash)):
+			os.makedirs(os.path.join(config['models_dir'], config['dataset'], graphObject.hash))
+		metrics_path = os.path.join(config['models_dir'], config['dataset'], graphObject.hash, 'metrics.json')
+		model_path = os.path.join(config['models_dir'], config['dataset'], graphObject.hash, 'model.pt')
+		fig_path = os.path.join(config['models_dir'], config['dataset'], graphObject.hash, 'curves.png')
+	else:
+		if not os.path.exists(model_dir):
+			os.makedirs(model_dir)
+		metrics_path = os.path.join(model_dir, 'metrics.json')
+		model_path = os.path.join(model_dir, 'model.pt')
+		fig_path = os.path.join(model_dir, 'curves.png')
 
 	model.to(device)
 
@@ -153,16 +177,27 @@ def worker(config: dict, graphObject: 'Graph', device: torch.device = None, mode
 
 		times.append(time.time() - start_time)
 
-	if model_dir is None:
-		if not os.path.exists(os.path.join(config['models_dir'], config['dataset'], graphObject.hash)):
-			os.makedirs(os.path.join(config['models_dir'], config['dataset'], graphObject.hash))
-		metrics_path = os.path.join(config['models_dir'], config['dataset'], graphObject.hash, 'metrics.json')
-		model_path = os.path.join(config['models_dir'], config['dataset'], graphObject.hash, 'model.pt')
-	else:
-		if not os.path.exists(model_dir):
-			os.makedirs(model_dir)
-		metrics_path = os.path.join(model_dir, 'metrics.json')
-		model_path = os.path.join(model_dir, 'model.pt')
+		if save_fig:
+			# Save figure of learning curves
+			fig, ax1 = plt.subplots()
+			ax2 = ax1.twinx()
+
+			loss, = ax1.plot(epochs, losses, 'b-', label='Training Loss')
+			train_acc, = ax2.plot(epochs, train_accuracies, 'r-', label='Training Accuracy')
+			test_acc, = ax2.plot(epochs, test_accuracies, 'r--', label='Test Accuracy')
+
+			ax1.set_xlabel('Epochs')
+			ax1.set_ylabel('Loss')
+			ax2.set_ylabel('Accuracy (%)')
+			ax1.yaxis.label.set_color(loss.get_color())
+			ax2.yaxis.label.set_color(train_acc.get_color())
+			ax1.tick_params(axis='y', colors=loss.get_color())
+			ax2.tick_params(axis='y', colors=train_acc.get_color())
+			ax1.legend(handles=[loss, train_acc, test_acc], loc='center right')
+
+			plt.title(f'Model: {model_name}. Params: {pu.human_format(model_params)}. Time: {times[-1]/3600 : 0.2f}h')
+
+			plt.savefig(fig_path)
 
 	# Save metrics to a json file
 	with open(metrics_path, 'w', encoding='utf8') as json_file:
