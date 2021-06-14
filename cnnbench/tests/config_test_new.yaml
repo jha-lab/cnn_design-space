@@ -14,16 +14,16 @@ manual_dir: null
 models_dir: /scratch/gpfs/stuli/cnnbench_models/
 
 # Training parameters
-epochs: 200
+epochs: 300
 train_batch_size: 128
 test_batch_size: 128
 optimizer: AdamW
 optimizer_args:
-  lr: 0.0001
-  weight_decay: 0.0005
+  lr: 0.00015
+  weight_decay: 0.00001
 scheduler: CosineAnnealingLR
 scheduler_args:
-  T_max: 200
+  T_max: 300
 
 # Architecture parameters
 module_vertices: 4
