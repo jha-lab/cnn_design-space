@@ -574,7 +574,7 @@ if __name__ == '__main__':
 		'--config',
 		metavar='',
 		type=str,
-		default='./tests/config_test.yaml',
+		default='./tests/config_test_tune.yaml',
 		help=f'Path to the configuration file')
 	parser.add_argument(
 	  '--model_name',
@@ -614,4 +614,4 @@ if __name__ == '__main__':
 	else:
 		model_dir = args.model_dir
 	
-	worker(config, model_graph, device, model_dir)
+	worker(config, model_graph, device, model_dir, auto_tune=False)

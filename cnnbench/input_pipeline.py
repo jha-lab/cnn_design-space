@@ -7,7 +7,10 @@
 import os
 import sys
 
+import numpy as np
+
 import torch
+from torch.utils.data import DataLoader, SubsetRandomSampler
 from torchvision import datasets, transforms
 
 from utils import print_util as pu
@@ -41,15 +44,20 @@ DATASET_PRESETS = {
     },
 }
 
+VAL_PERCENTAGE = 0.1
 
-def get_loader(config: dict):
+
+def get_loader(config: dict, shuffle=True):
     """Gets the data loaders for the training and test sets
     
     Args:
         config (dict): configuration for the dataset
+        shuffle (bool, optional): to shuffle before splitting training and validaton
+        	sets.
     
     Returns:
-        (train_loader, test_loader): train and test DataLoaders
+        (train_loader, val_loader, test_loader, total_size, val_size): train, val and test DataLoaders,
+        	total size of the training set and the size of the validation set
     """
     dataset = config['dataset']
 
@@ -78,6 +86,8 @@ def get_loader(config: dict):
         print(f'{pu.bcolors.OKBLUE}Loading Training dataset{pu.bcolors.ENDC}')
         train_dataset = eval(f"datasets.{dataset}(root='{config['data_dir']}', " \
             + "train=True, download=False, transform=train_transforms)")
+        val_dataset = eval(f"datasets.{dataset}(root='{config['data_dir']}', " \
+            + "train=True, download=False, transform=test_transforms)")
         print(train_dataset)
 
         print(f'{pu.bcolors.OKBLUE}Loading Test dataset{pu.bcolors.ENDC}')
@@ -88,6 +98,8 @@ def get_loader(config: dict):
         print(f'{pu.bcolors.OKBLUE}Loading Training dataset{pu.bcolors.ENDC}')
         train_dataset = datasets.ImageFolder(root=os.path.join(config['data_dir'], dataset, 'train'),
             transform=train_transforms)
+        val_dataset = datasets.ImageFolder(root=os.path.join(config['data_dir'], dataset, 'train'),
+            transform=test_transforms)
         print(train_dataset)
 
         print(f'{pu.bcolors.OKBLUE}Loading Test dataset{pu.bcolors.ENDC}')
@@ -95,12 +107,27 @@ def get_loader(config: dict):
             transform=test_transforms)
         print(test_dataset)
 
-    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=config['train_batch_size'],
-                            shuffle=True, pin_memory=True, num_workers=16)
-    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=config['test_batch_size'],
-                            shuffle=False, pin_memory=True, num_workers=16)
+    total_size, val_size = len(train_dataset), int(np.floor(len(train_dataset) * VAL_PERCENTAGE))
+    
+    indices = list(range(total_size))
+    
+    if shuffle:
+        np.random.seed(0)
+        np.random.shuffle(indices)
 
-    return train_loader, test_loader
+    train_indices, val_indices = indices[val_size:], indices[:val_size]
+
+    train_sampler = SubsetRandomSampler(train_indices)
+    val_sampler = SubsetRandomSampler(val_indices)
+
+    train_loader = DataLoader(train_dataset, batch_size=config['train_batch_size'],
+                            sampler=train_sampler, pin_memory=True, num_workers=8)
+    val_loader = DataLoader(val_dataset, batch_size=config['train_batch_size'],
+                            sampler=val_sampler, pin_memory=True, num_workers=8)
+    test_loader = DataLoader(test_dataset, batch_size=config['test_batch_size'],
+                            shuffle=False, pin_memory=True, num_workers=8)
+
+    return train_loader, val_loader, test_loader, total_size, val_size
 
 
 
