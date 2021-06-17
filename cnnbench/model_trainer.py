@@ -107,9 +107,38 @@ def worker(config: dict,
 		# TODO: Find a workaround that doesn't change batch size (since training recipe depends on
 		# the batch size). Else, do checkpointing and train till end using the smaller batch size.
 
+		trial_config = deepcopy(config)
+		trial_config['epochs'] = 1
+		trial_hp_config = {}
+		if 'optimizer' in config.keys():
+			trial_hp_config['optimizer'] = config['optimizer']
+		if 'scheduler' in config.keys():
+			trial_hp_config['scheduler'] = config['scheduler']
+
+		# Robust batch sizing for differen model sizes
+		while (trial_config['train_batch_size'] >= 1) and (trial_config['test_batch_size'] >= 1):
+			print(f'{pu.bcolors.OKBLUE}Running trial with batch size:{pu.bcolors.ENDC} {trial_config["train_batch_size"]}')
+			try:
+				# Do a trial run
+				trial_device = torch.device('cuda:0')
+				train(trial_hp_config, trial_config, graphObject, trial_device, model_dir, auto_tune=False, 
+					save_metrics=False, save_model=False, save_fig=False, gpuFrac=0.45)
+			except RuntimeError as e:
+				if 'CUDA out of memory' in str(e):
+					trial_config['train_batch_size'] = trial_config['train_batch_size']//2
+					trial_config['test_batch_size'] = trial_config['test_batch_size']//2
+				else:
+					raise e
+			except Exception as e:
+				raise e
+			else:
+				break
+		
+		print(f'{pu.bcolors.OKGREEN}Selected batch size:{pu.bcolors.ENDC} {trial_config["train_batch_size"]}')
+
 		small_batch_config = deepcopy(config)
-		small_batch_config['train_batch_size'] = config['train_batch_size']//4
-		small_batch_config['test_batch_size'] = config['test_batch_size']//4
+		small_batch_config['train_batch_size'] = trial_config['train_batch_size']
+		small_batch_config['test_batch_size'] = trial_config['test_batch_size']
 
 		result = tune.run(
 	        partial(train, 
@@ -120,7 +149,8 @@ def worker(config: dict,
 	        	auto_tune=True, 
 	        	save_metrics=False,
 	        	save_model=False,
-	        	save_fig=False),
+	        	save_fig=False,
+	        	gpuFrac=None),
 	        resources_per_trial={'gpu': 0.5},
 	        config=hp_config,
 	        num_samples=NUM_SAMPLES,
@@ -138,22 +168,32 @@ def worker(config: dict,
 			save_metrics=True, save_model=True, save_fig=save_fig)
 	
 
-def train(config, main_config, graphObject, device, model_dir, auto_tune, save_metrics, save_model, save_fig):
+def train(config, 
+		  main_config, 
+		  graphObject, 
+		  device, 
+		  model_dir, 
+		  auto_tune, 
+		  save_metrics, 
+		  save_model, 
+		  save_fig, 
+		  gpuFrac):
 	"""Summary
 	
 	Args:
-	    main_config (TYPE): dictionary of main configuration
-	    config (TYPE): dictionary of hyper-parameters of the training recipe
-	    graphObject (TYPE): Graph object
+	    config (dict): dictionary of hyper-parameters of the training recipe
+	    main_config (dict): dictionary of main configuration
+	    graphObject (Graph): Graph object
 	    device (torch.device, optional): cuda device
 	    model_dir (str, optional): directory to store the model and metrics
-	    auto_tune (TYPE): if ray-tune is running
-	    save_metrics (TYPE): to save the mterics to json file
-	    save_model (TYPE): to save trained model
+	    auto_tune (bool): if ray-tune is running
+	    save_metrics (bool): to save the mterics to json file
+	    save_model (bool): to save trained model
 	    save_fig (bool, optional): to save the learning curves
+	    gpuFrac (float): fraction of GPU memory to be alloted for training given model
 	
 	Raises:
-	    ValueError: Description
+	    ValueError: if no GPU is found
 	"""
 	print(f'{pu.bcolors.OKBLUE}Using hyper-parameters:{pu.bcolors.ENDC}\n{config}')
 
@@ -163,6 +203,11 @@ def train(config, main_config, graphObject, device, model_dir, auto_tune, save_m
 
 	train_loader, val_loader, test_loader, total_size, val_size = get_loader(main_config)
 	train_size, test_size = int(total_size - val_size), len(test_loader.dataset)
+
+	if gpuFrac:
+		# GPU memory fraction only to be defined during trial run on a single GPU
+		assert device is not None and device.index is not None
+		torch.cuda.set_per_process_memory_fraction(float(gpuFrac), device.index)
 
 	if device is None:
 		if torch.cuda.is_available():
@@ -245,6 +290,10 @@ def train(config, main_config, graphObject, device, model_dir, auto_tune, save_m
 				print('Train Epoch: {} [{:6d}/{:6d} ({:.0f}%)]\tLearning Rate: {:.6f}\tLoss: {:.6f}'.format(
 					epoch, batch_idx * batch_size, train_size,
 					100. * batch_idx / len(train_loader), optimizer.param_groups[0]['lr'], loss.item()))
+			
+			if gpuFrac:
+				# Dry run complete
+				break
 
 		# Run validation
 		model.eval()
@@ -347,7 +396,6 @@ def train(config, main_config, graphObject, device, model_dir, auto_tune, save_m
 					   'epochs': epochs,
 					   'train_losses': train_losses,
 					   'val_losses': val_losses,
-					   'test_losses': test_losses,
 					   'learning_rates': learning_rates,
 					   'train_accuracies': train_accuracies,
 					   'val_accuracies': val_accuracies,
