@@ -26,6 +26,9 @@ import hashlib
 import json
 import time
 
+import multiprocessing as mp
+mp.set_start_method('forkserver', force=True)
+
 from input_pipeline import get_loader
 from model_builder import CNNBenchModel
 
@@ -126,34 +129,7 @@ def worker(config: dict,
 
 		assert torch.cuda.device_count() > 1, 'More than one GPU is required for automatic tuning'
 
-		trial_config = deepcopy(config)
-		trial_config['epochs'] = 1
-		trial_hp_config = {}
-		if 'optimizer' in config.keys():
-			trial_hp_config['optimizer'] = config['optimizer']
-		if 'scheduler' in config.keys():
-			trial_hp_config['scheduler'] = config['scheduler']
-
-		print(f'{pu.bcolors.OKBLUE}Trial run to test batch size{pu.bcolors.ENDC}')
-
-		# Robust batch sizing for different model sizes
-		while (trial_config['train_batch_size'] >= 1) and (trial_config['test_batch_size'] >= 1):
-			print(f'{pu.bcolors.OKBLUE}Running trial with batch size:{pu.bcolors.ENDC} {trial_config["train_batch_size"]}')
-			try:
-				# Do a trial run
-				trial_device = torch.device('cuda:0')
-				train(trial_hp_config, trial_config, graphObject, trial_device, model_dir, auto_tune=False, 
-					checkpointing=False, gpuFrac=0.45)
-			except RuntimeError as e:
-				if 'CUDA out of memory' in str(e):
-					trial_config['train_batch_size'] = trial_config['train_batch_size']//2
-					trial_config['test_batch_size'] = trial_config['test_batch_size']//2
-				else:
-					raise e
-			except Exception as e:
-				raise e
-			else:
-				break
+		trial_config = run_trial(config, graphObject, model_dir, gpuFrac=0.45)
 		
 		print(f'{pu.bcolors.OKGREEN}Selected batch size:{pu.bcolors.ENDC} {trial_config["train_batch_size"]}')
 
@@ -214,6 +190,45 @@ def worker(config: dict,
 			shutil.rmtree(os.path.join(model_dir, ray_log_dir[0]))
 		except IndexError:
 			pass
+
+
+def run_trial(config: dict, graphObject, model_dir, gpuFrac):
+
+	trial_config = deepcopy(config)
+	trial_config['epochs'] = 1
+	trial_hp_config = {}
+
+	if 'optimizer' in config.keys():
+		trial_hp_config['optimizer'] = config['optimizer']
+	if 'scheduler' in config.keys():
+		trial_hp_config['scheduler'] = config['scheduler']
+
+	print(f'{pu.bcolors.OKBLUE}Trial run to test batch size{pu.bcolors.ENDC}')
+
+	# Robust batch sizing for different model sizes
+	while (trial_config['train_batch_size'] >= 1) and (trial_config['test_batch_size'] >= 1):
+		print(f'{pu.bcolors.OKBLUE}Running trial with batch size:{pu.bcolors.ENDC} {trial_config["train_batch_size"]}')
+		try:
+			# Do a trial run
+			trial_device = torch.device('cuda:0')
+			p = mp.Process(target=train, args=(trial_hp_config, trial_config, graphObject, trial_device, model_dir),
+				kwargs={'auto_tune': False, 'checkpointing': False, 'gpuFrac': gpuFrac})
+			p.start()
+			p.join()
+			if p.exitcode != 0:
+				raise RuntimeError
+		except RuntimeError as e:
+			if (trial_config['train_batch_size'] > 1) and (trial_config['test_batch_size'] > 1):
+				trial_config['train_batch_size'] = trial_config['train_batch_size']//2
+				trial_config['test_batch_size'] = trial_config['test_batch_size']//2
+			else:
+				raise ValueError('RuntimeError faced even with batch size of 1')
+		except Exception as e:
+			raise e
+		else:
+			break
+
+	return trial_config
 
 
 def get_hp_hash(hp_config: dict):
