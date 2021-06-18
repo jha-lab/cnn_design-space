@@ -15,10 +15,14 @@ from ray import tune
 from ray.tune import CLIReporter
 from ray.tune.schedulers import ASHAScheduler
 
+os.environ['TUNE_DISABLE_AUTO_CALLBACK_LOGGERS'] = "1"
+
 import numpy as np
 from inspect import getmembers
 from functools import partial
 from copy import deepcopy
+import shutil
+import hashlib
 import json
 import time
 
@@ -35,16 +39,17 @@ from matplotlib import pyplot as plt
 
 
 LOG_INTERVAL = 10
-NUM_SAMPLES = 10
+NUM_SAMPLES = 4
+CKPT_INTERVAL = 1
 
 
 def worker(config: dict, 
 		   graphObject: 'Graph', 
 		   device: torch.device = None, 
 		   model_dir: str = None, 
-		   auto_tune=False,
-		   save_fig=True):
-	"""Trains a CNN model on a given device
+		   auto_tune = False,
+		   save_fig = False):
+	"""Trains or tunes a CNN model with different training recipes
 	
 	Args:
 	    config (dict): dictionary of configuration
@@ -60,6 +65,13 @@ def worker(config: dict,
 	"""
 	torch.manual_seed(0)
 
+	if model_dir is None:
+		if not os.path.exists(os.path.join(config['models_dir'], config['dataset'], graphObject.hash)):
+			os.makedirs(os.path.join(config['models_dir'], config['dataset'], graphObject.hash))
+	else:
+		if not os.path.exists(model_dir):
+			os.makedirs(model_dir)
+
 	if not auto_tune:
 		hp_config = {}
 		
@@ -69,8 +81,20 @@ def worker(config: dict,
 		if 'scheduler' in config.keys():
 			hp_config['scheduler'] = config['scheduler']
 
-		train(hp_config, config, graphObject, device, model_dir, auto_tune=auto_tune, 
-			save_metrics=True, save_model=True, save_fig=save_fig)
+		train(hp_config, config, graphObject, device, model_dir, auto_tune=False, 
+			checkpointing=True)
+
+		checkpoints = os.listdir(model_dir)
+		checkpoints = [c for c in checkpoints if c.startswith('model')]
+
+		sorted_checkpoints = sorted(checkpoints, key=lambda x: int(x.split('_')[1].split('.')[0]))
+
+		# TODO: implement saving model from checkpoints with best validation accuracy
+
+		best_checkpoint = torch.load(sorted_checkpoints[-1])
+
+		if save_fig: plot_metrics(best_checkpoint, model_dir)
+
 	else:
 		# Implementing a basic hyper-parameter search space
 		hp_config = {'optimizer':
@@ -93,7 +117,7 @@ def worker(config: dict,
 		scheduler = ASHAScheduler(
 	        metric="val_loss",
 	        mode="min",
-	        max_t=config['epochs']//10,
+	        max_t=config['epochs'],
 	        grace_period=1,
 	        reduction_factor=2)
 
@@ -101,11 +125,6 @@ def worker(config: dict,
 			metric_columns=["val_loss", "val_accuracy", "training_iteration"])
 
 		assert torch.cuda.device_count() > 1, 'More than one GPU is required for automatic tuning'
-
-		print(f'{pu.bcolors.OKBLUE}Running automatic hyper-parameter tuning{pu.bcolors.ENDC}')
-
-		# TODO: Find a workaround that doesn't change batch size (since training recipe depends on
-		# the batch size). Else, do checkpointing and train till end using the smaller batch size.
 
 		trial_config = deepcopy(config)
 		trial_config['epochs'] = 1
@@ -115,14 +134,16 @@ def worker(config: dict,
 		if 'scheduler' in config.keys():
 			trial_hp_config['scheduler'] = config['scheduler']
 
-		# Robust batch sizing for differen model sizes
+		print(f'{pu.bcolors.OKBLUE}Trial run to test batch size{pu.bcolors.ENDC}')
+
+		# Robust batch sizing for different model sizes
 		while (trial_config['train_batch_size'] >= 1) and (trial_config['test_batch_size'] >= 1):
 			print(f'{pu.bcolors.OKBLUE}Running trial with batch size:{pu.bcolors.ENDC} {trial_config["train_batch_size"]}')
 			try:
 				# Do a trial run
 				trial_device = torch.device('cuda:0')
 				train(trial_hp_config, trial_config, graphObject, trial_device, model_dir, auto_tune=False, 
-					save_metrics=False, save_model=False, save_fig=False, gpuFrac=0.45)
+					checkpointing=False, gpuFrac=0.45)
 			except RuntimeError as e:
 				if 'CUDA out of memory' in str(e):
 					trial_config['train_batch_size'] = trial_config['train_batch_size']//2
@@ -140,17 +161,18 @@ def worker(config: dict,
 		small_batch_config['train_batch_size'] = trial_config['train_batch_size']
 		small_batch_config['test_batch_size'] = trial_config['test_batch_size']
 
+		print(f'{pu.bcolors.OKBLUE}Running automatic hyper-parameter tuning{pu.bcolors.ENDC}')
+
 		result = tune.run(
 	        partial(train, 
 	        	main_config=small_batch_config, 
 	        	graphObject=graphObject, 
 	        	device=device, 
 	        	model_dir=model_dir,
-	        	auto_tune=True, 
-	        	save_metrics=False,
-	        	save_model=False,
-	        	save_fig=False,
+	        	auto_tune=True,
+	        	checkpointing=True,
 	        	gpuFrac=None),
+	        local_dir=model_dir,
 	        resources_per_trial={'gpu': 0.5},
 	        config=hp_config,
 	        num_samples=NUM_SAMPLES,
@@ -162,10 +184,79 @@ def worker(config: dict,
 
 		print(f'{pu.bcolors.OKGREEN}Best hyper-parameter set:{pu.bcolors.ENDC}\n{best_hp_config}')
 
-		# TODO: Use checkpointing here instead to get best trained model
+		trial_dirs = os.listdir(os.path.join(model_dir, 'auto_tune'))
+		best_model_dir = [t for t in trial_dirs if t.endswith(get_hp_hash(best_hp_config))]
+		best_model_dir = os.path.join(model_dir, 'auto_tune', best_model_dir[0])
 
-		train(hp_config, best_hp_config, graphObject, device, model_dir, auto_tune=False, 
-			save_metrics=True, save_model=True, save_fig=save_fig)
+		with open(os.path.join(model_dir, 'best_model_dir.txt'), 'w+') as f:
+			f.write(best_model_dir)
+
+		with open(os.path.join(model_dir, 'best_model_dir.txt'), 'r') as f:
+			best_model_dir = f.read()
+
+		checkpoints = os.listdir(best_model_dir)
+		checkpoints = [c for c in checkpoints if c.startswith('model')]
+
+		sorted_checkpoints = sorted(checkpoints, key=lambda x: int(x.split('_')[1].split('.')[0]))
+
+		# TODO: implement saving model from checkpoints with best validation accuracy
+
+		best_checkpoint = torch.load(os.path.join(best_model_dir, sorted_checkpoints[-1]))
+
+		if save_fig: plot_metrics(best_checkpoint, model_dir)
+
+		torch.save(best_checkpoint, os.path.join(model_dir, 'best_tuned_model.ckpt'))
+
+		# Perform clean-up of ray-tune files
+		ray_log_dir = [d for d in os.listdir(model_dir) if d.startswith('DEFAULT')]
+		
+		try:
+			shutil.rmtree(os.path.join(model_dir, ray_log_dir[0]))
+		except IndexError:
+			pass
+
+
+def get_hp_hash(hp_config: dict):
+    """Returns the hash for a given hyper-parameter configuration
+    
+    Args:
+        hp_config (dict): hyper-parameter configuration dictionary
+    """
+    return hashlib.shake_128(str(hp_config).encode('utf-8')).hexdigest(5)
+
+
+def plot_metrics(checkpoint, model_dir):
+	"""Plot and save metrics for the given checkpoint
+	"""
+	epochs = checkpoint['epochs']
+	train_losses = checkpoint['train_losses']
+	val_losses = checkpoint['val_losses']
+	train_accuracies = checkpoint['train_accuracies']
+	test_accuracies = checkpoint['test_accuracies']
+	model_params = checkpoint['model_params']
+	model_name = checkpoint['model_name']
+	times = checkpoint['times']
+
+	fig, ax1 = plt.subplots()
+	ax2 = ax1.twinx()
+
+	train_loss, = ax1.plot(epochs, train_losses, 'b-', label='Training Loss')
+	val_loss, = ax1.plot(epochs, val_losses, 'b--', label='Validation Loss')
+	train_acc, = ax2.plot(epochs, train_accuracies, 'r-', label='Validation Accuracy')
+	test_acc, = ax2.plot(epochs, test_accuracies, 'r--', label='Test Accuracy')
+
+	ax1.set_xlabel('Epochs')
+	ax1.set_ylabel('Loss')
+	ax2.set_ylabel('Accuracy (%)')
+	ax1.yaxis.label.set_color(train_loss.get_color())
+	ax2.yaxis.label.set_color(train_acc.get_color())
+	ax1.tick_params(axis='y', colors=train_loss.get_color())
+	ax2.tick_params(axis='y', colors=train_acc.get_color())
+	ax1.legend(handles=[train_loss, val_loss, train_acc, test_acc], loc='center right')
+
+	plt.title(f'Model: {model_name}. Params: {pu.human_format(model_params)}. Time: {times[-1]/3600 : 0.2f}h')
+
+	plt.savefig(os.path.join(model_dir, 'curves.png'))
 	
 
 def train(config, 
@@ -174,11 +265,9 @@ def train(config,
 		  device, 
 		  model_dir, 
 		  auto_tune, 
-		  save_metrics, 
-		  save_model, 
-		  save_fig, 
-		  gpuFrac):
-	"""Summary
+		  checkpointing = True,
+		  gpuFrac = None):
+	"""Trains a CNN model on a given device
 	
 	Args:
 	    config (dict): dictionary of hyper-parameters of the training recipe
@@ -187,9 +276,7 @@ def train(config,
 	    device (torch.device, optional): cuda device
 	    model_dir (str, optional): directory to store the model and metrics
 	    auto_tune (bool): if ray-tune is running
-	    save_metrics (bool): to save the mterics to json file
-	    save_model (bool): to save trained model
-	    save_fig (bool, optional): to save the learning curves
+	    checkpointing (bool, optional): to checkpoint trained models
 	    gpuFrac (float): fraction of GPU memory to be alloted for training given model
 	
 	Raises:
@@ -224,19 +311,6 @@ def train(config,
 	else:
 		model_name = graphObject.hash
 
-	if model_dir is None:
-		if not os.path.exists(os.path.join(main_config['models_dir'], main_config['dataset'], graphObject.hash)):
-			os.makedirs(os.path.join(main_config['models_dir'], main_config['dataset'], graphObject.hash))
-		metrics_path = os.path.join(main_config['models_dir'], main_config['dataset'], graphObject.hash, 'metrics.json')
-		model_path = os.path.join(main_config['models_dir'], main_config['dataset'], graphObject.hash, 'model.pt')
-		fig_path = os.path.join(main_config['models_dir'], main_config['dataset'], graphObject.hash, 'curves.png')
-	else:
-		if not os.path.exists(model_dir):
-			os.makedirs(model_dir)
-		metrics_path = os.path.join(model_dir, 'metrics.json')
-		model_path = os.path.join(model_dir, 'model.pt')
-		fig_path = os.path.join(model_dir, 'curves.png')
-
 	optims = [opt[0] for opt in getmembers(optim)]
 
 	if 'optimizer' in config.keys():
@@ -245,7 +319,8 @@ def train(config,
 			raise ValueError(f'Optimizer {opt} not supported in PyTorch')
 		optimizer = eval(f'optim.{opt}(model.parameters(), **config["optimizer"][opt])')
 	else:
-		optimizer = optim.SGD(model_parameters(), lr=0.01, momentum=0.9, weight_decay=5e-4)
+		opt = 'AdamW'
+		optimizer = optim.AdamW(model_parameters(), lr=0.0001, weight_decay=0.0001)
 
 	shdlrs = [sh[0] for sh in getmembers(optim.lr_scheduler)]
 
@@ -254,6 +329,9 @@ def train(config,
 		if schdlr not in shdlrs:
 			raise ValueError(f'Scheduler {schdlr} not supported in PyTorch')
 		scheduler = eval(f'optim.lr_scheduler.{schdlr}(optimizer, **config["scheduler"][schdlr])')
+	else:
+		schdlr = 'CosineAnnealingLR'
+		scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=int(main_config['epochs']))
 
 	train_losses = []
 	val_losses = []
@@ -354,6 +432,36 @@ def train(config,
 		epochs.append(epoch)
 		learning_rates.append(optimizer.param_groups[0]['lr'])
 
+		if checkpointing and epoch % CKPT_INTERVAL == 0:
+			if auto_tune:
+				checkpoint_dir = os.path.join('..', '..', 
+						'auto_tune', 
+						'_'.join([opt, schdlr, get_hp_hash(config)]))
+			else:
+				checkpoint_dir = model_dir
+
+			if not os.path.exists(checkpoint_dir): os.makedirs(checkpoint_dir)
+			
+			ckpt_path = os.path.join(checkpoint_dir, f'model_{epoch}.ckpt')
+
+			torch.save({'config': main_config,
+						'hp_config': config,
+						'model_name': model_name,
+			   			'model_params': model_params,
+						'model_state_dict': model.state_dict(),
+						'optimizer_state_dict': optimizer.state_dict(),
+						'scheduler_state_dict': scheduler.state_dict(),
+				   		'epochs': epochs,
+				   		'train_losses': train_losses,
+				   		'val_losses': val_losses,
+				   		'learning_rates': learning_rates,
+				   		'train_accuracies': train_accuracies,
+				   		'val_accuracies': val_accuracies,
+				   		'test_accuracies': test_accuracies,
+				   		'times': times}, ckpt_path)
+
+			print(f'{pu.bcolors.OKGREEN}Saved checkpoint to:{pu.bcolors.ENDC} {ckpt_path}')
+
 		if auto_tune:
 			tune.report(val_loss=val_losses[-1], val_accuracy=val_accuracies[-1])
 
@@ -364,47 +472,3 @@ def train(config,
 				scheduler.step()
 
 		times.append(time.time() - start_time)
-
-		# Save figure of learning curves
-		if save_fig:
-			fig, ax1 = plt.subplots()
-			ax2 = ax1.twinx()
-
-			train_loss, = ax1.plot(epochs, train_losses, 'b-', label='Training Loss')
-			val_loss, = ax1.plot(epochs, train_losses, 'b--', label='Validation Loss')
-			val_acc, = ax2.plot(epochs, train_accuracies, 'r-', label='Validation Accuracy')
-			test_acc, = ax2.plot(epochs, test_accuracies, 'r--', label='Test Accuracy')
-
-			ax1.set_xlabel('Epochs')
-			ax1.set_ylabel('Loss')
-			ax2.set_ylabel('Accuracy (%)')
-			ax1.yaxis.label.set_color(loss.get_color())
-			ax2.yaxis.label.set_color(train_acc.get_color())
-			ax1.tick_params(axis='y', colors=train_loss.get_color())
-			ax2.tick_params(axis='y', colors=val_acc.get_color())
-			ax1.legend(handles=[train_loss, val_loss, val_acc, test_acc], loc='center right')
-
-			plt.title(f'Model: {model_name}. Params: {pu.human_format(model_params)}. Time: {times[-1]/3600 : 0.2f}h')
-
-			plt.savefig(fig_path)
-
-	# Save metrics to a json file
-	if save_metrics:
-		with open(metrics_path, 'w', encoding='utf8') as json_file:
-			json.dump({'model_hash': graphObject.hash,
-					   'model_params': model_params,
-					   'epochs': epochs,
-					   'train_losses': train_losses,
-					   'val_losses': val_losses,
-					   'learning_rates': learning_rates,
-					   'train_accuracies': train_accuracies,
-					   'val_accuracies': val_accuracies,
-					   'test_accuracies': test_accuracies,
-					   'times': times}, 
-					   json_file, ensure_ascii=True)
-			print(f'{pu.bcolors.OKGREEN}Saved metrics to:{pu.bcolors.ENDC}\n{metrics_path}')		
-
-	# Save trained model
-	if save_model:
-		torch.save(model.state_dict(), model_path)
-		print(f'{pu.bcolors.OKGREEN}Saved trained model to:{pu.bcolors.ENDC}\n{model_path}')
