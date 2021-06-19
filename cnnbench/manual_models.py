@@ -589,6 +589,11 @@ if __name__ == '__main__':
 	  default=None,
 	  help=f'Name of the directory to save the model. Defaults to "../results/manual_models/<model_name>"')
 	parser.add_argument(
+	  '--auto_tune',
+	  default=False,
+	  action='store_true',
+	  help=f'To tune the model training hyper-parameters')
+	parser.add_argument(
 	  '--device',
 	  metavar='',
 	  type=str,
@@ -614,4 +619,4 @@ if __name__ == '__main__':
 	else:
 		model_dir = args.model_dir
 	
-	worker(config, model_graph, device, model_dir, auto_tune=False)
+	worker(config, model_graph, device, model_dir, auto_tune=args.auto_tune)
