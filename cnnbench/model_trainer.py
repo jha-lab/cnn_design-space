@@ -43,8 +43,7 @@ from matplotlib import pyplot as plt
 
 
 LOG_INTERVAL = 10
-NUM_SAMPLES = 32
-CKPT_INTERVAL = 10
+NUM_SAMPLES = 32 
 KEEP_TRIALS = False
 
 
@@ -53,6 +52,7 @@ def worker(config: dict,
 		   device: torch.device = None, 
 		   model_dir: str = None, 
 		   auto_tune = False,
+		   ckpt_interval = 1,
 		   save_fig = True):
 	"""Trains or tunes a CNN model with different training recipes
 	
@@ -63,12 +63,16 @@ def worker(config: dict,
 	    model_dir (str, optional): directory to store the model and metrics
 	    auto_tune (bool, optional): to use ray-tune for automatic tuning of hyper-parameter,
 	    	else defaults to the first training recipe in config
+	    ckpt_interval (int, optional): checkpointing interval. If "-1", only last checkpoint is
+	    	saved
 	    save_fig (bool, optional): to save the learning curves
 	
-	Raises:
+	No Longer Raises:
 	    ValueError: if an input parameter is not supported, or GPU device isn't found
 	"""
 	torch.manual_seed(0)
+
+	if ckpt_interval == -1: ckpt_interval = config['epochs']
 
 	if model_dir is None:
 		if not os.path.exists(os.path.join(config['models_dir'], config['dataset'], graphObject.hash)):
@@ -87,7 +91,7 @@ def worker(config: dict,
 			hp_config['scheduler'] = config['scheduler']
 
 		train(hp_config, config, graphObject, device, model_dir, auto_tune=False, 
-			checkpointing=True)
+			checkpointing=True, ckpt_interval=ckpt_interval)
 
 		checkpoints = os.listdir(model_dir)
 		checkpoints = [c for c in checkpoints if c.startswith('model')]
@@ -119,15 +123,26 @@ def worker(config: dict,
 					 	 {'ExponentialLR':
 					 		{'gamma': tune.uniform(0.8, 0.99)}},
 					 	 {'CosineAnnealingWarmRestarts':
-					 	 	{'T_0': tune.choice([20, 50]),
+					 	 	{'T_0': tune.choice([10, 20]),
 					 	 	 'T_mult': tune.choice([1, 2, 4])}}])}
 
+		# Implement Asynchronous Successive Halving scheduler
 		scheduler = ASHAScheduler(
+			time_attr='training_iteration',
 	        metric="val_loss",
 	        mode="min",
 	        max_t=config['epochs'],
 	        grace_period=1,
 	        reduction_factor=2)
+
+		# Implement early stopping.  
+		stopper = tune.stopper.ExperimentPlateauStopper(
+			metric="val_loss", 
+			top=2, 
+			mode="min", 
+			patience=10)
+
+		assert ckpt_interval == 1, 'Checkpoint interval should be 1 for early stopping'
 
 		reporter = CLIReporter(parameter_columns=['optimizer', 'scheduler'],
 			metric_columns=["val_loss", "val_accuracy", "training_iteration"])
@@ -151,11 +166,18 @@ def worker(config: dict,
 	        	model_dir=model_dir,
 	        	auto_tune=True,
 	        	checkpointing=True,
+	        	ckpt_interval=ckpt_interval,
 	        	gpuFrac=None),
 	        local_dir=model_dir,
+	        name='auto_tune',
+	        trial_name_creator=get_trial_name,
+	        trial_dirname_creator=get_trial_name,
 	        resources_per_trial={'gpu': 0.5},
 	        config=hp_config,
 	        num_samples=NUM_SAMPLES,
+	        keep_checkpoints_num=1, # Stores only best checkpoint to save space
+	        checkpoint_score_attr='min-val_loss', # Stores checkpoint with minimum loss
+	        stop=stopper, # Early stopping
 	        scheduler=scheduler,
 	        progress_reporter=reporter)
 
@@ -165,31 +187,22 @@ def worker(config: dict,
 		print(f'{pu.bcolors.OKGREEN}Best hyper-parameter set:{pu.bcolors.ENDC}\n{best_hp_config}')
 
 		# Get path to directory with best model
-		trial_dirs = os.listdir(os.path.join(model_dir, 'auto_tune'))
-		best_model_dir = [t for t in trial_dirs if t.endswith(get_hp_hash(best_hp_config))]
-		best_model_dir = os.path.join(model_dir, 'auto_tune', best_model_dir[0])
+		best_model_dir = os.path.join(best_trial.checkpoint.value)
 		
 		# Save best model path to a file in model_dir
 		with open(os.path.join(model_dir, 'best_model_dir.txt'), 'w+') as f:
 			f.write(best_model_dir)
-		
+
 		with open(os.path.join(model_dir, 'best_model_dir.txt'), 'r') as f:
 			best_model_dir = f.read()
 
-		# Copy the checkpoints of the best model to model_dir
+		# Copy the checkpoint of the best model to model_dir
 		for ckpt in os.listdir(best_model_dir):
-			full_file_name = os.path.join(best_model_dir, ckpt)
-			if os.path.isfile(full_file_name):
-				shutil.copy(full_file_name, model_dir)
+			if ckpt.startswith('model'):
+				full_file_name = os.path.join(best_model_dir, ckpt)
+				shutil.copy(full_file_name, os.path.join(model_dir, 'model.pt'))
 
-		checkpoints = os.listdir(model_dir)
-		checkpoints = [c for c in checkpoints if c.endswith('.ckpt')]
-
-		sorted_checkpoints = sorted(checkpoints, key=lambda x: int(x.split('_')[1].split('.')[0]))
-
-		# TODO: implement saving model from checkpoints with best validation accuracy
-
-		best_checkpoint = torch.load(os.path.join(model_dir, sorted_checkpoints[-1]))
+		best_checkpoint = torch.load(os.path.join(model_dir, 'model.pt'))
 
 		print(f'{pu.bcolors.OKGREEN}Best model\'s performance:{pu.bcolors.ENDC}')
 		print(f'Train Accuracy: {best_checkpoint["train_accuracies"][-1] : 0.02f}%')
@@ -209,14 +222,6 @@ def worker(config: dict,
 			ax.set_xlabel('Epochs')
 			ax.set_ylabel('Validation Loss')
 			ax.figure.savefig(os.path.join(model_dir, 'all_curves.png'))
-
-		# Perform clean-up of ray-tune files
-		ray_log_dir = [d for d in os.listdir(model_dir) if d.startswith('DEFAULT')]
-		
-		try:
-			shutil.rmtree(os.path.join(model_dir, ray_log_dir[0]))
-		except IndexError:
-			pass
 
 		# Remove trials if KEEP_TRIALS is False
 		if not KEEP_TRIALS:
@@ -265,13 +270,21 @@ def run_trial(config: dict, graphObject, model_dir, gpuFrac):
 	return trial_config
 
 
-def get_hp_hash(hp_config: dict):
+def get_trial_name(trial: tune.trial.Trial):
     """Returns the hash for a given hyper-parameter configuration
     
     Args:
-        hp_config (dict): hyper-parameter configuration dictionary
+        trial (tune.trial.Trial): ray-tune trial
+    
+	Returns:
+        trial_name: string with trial name consisting of the optimizer, 
+        	scheduler and a unique hash for the hyper-parameter configuration.
     """
-    return hashlib.shake_128(str(hp_config).encode('utf-8')).hexdigest(5)
+    opt = list(trial.config['optimizer'].keys())[0]
+    schdlr = list(trial.config['scheduler'].keys())[0]
+    return '_'.join([opt,
+    				 schdlr,
+    				 hashlib.shake_128(str(trial.config).encode('utf-8')).hexdigest(5)])
 
 
 def plot_metrics(checkpoint, model_dir):
@@ -318,6 +331,8 @@ def train(config,
 		  model_dir, 
 		  auto_tune, 
 		  checkpointing = True,
+		  ckpt_interval = 1,
+		  checkpoint_dir = None,
 		  gpuFrac = None):
 	"""Trains a CNN model on a given device
 	
@@ -329,6 +344,7 @@ def train(config,
 	    model_dir (str, optional): directory to store the model and metrics
 	    auto_tune (bool): if ray-tune is running
 	    checkpointing (bool, optional): to checkpoint trained models
+	    ckpt_interval (int, optional): checkpointing interval
 	    gpuFrac (float): fraction of GPU memory to be alloted for training given model
 	
 	Raises:
@@ -485,17 +501,16 @@ def train(config,
 		learning_rates.append(optimizer.param_groups[0]['lr'])
 		times.append(time.time() - start_time)
 
-		if checkpointing and epoch % CKPT_INTERVAL == 0:
+		if checkpointing and epoch % ckpt_interval == 0:
 			if auto_tune:
-				checkpoint_dir = os.path.join('..', '..', 
-						'auto_tune', 
-						'_'.join([opt, schdlr, get_hp_hash(config)]))
+				with tune.checkpoint_dir(step=epoch) as tune_checkpoint_dir:
+					checkpoint_dir = tune_checkpoint_dir
 			else:
 				checkpoint_dir = model_dir
 
 			if not os.path.exists(checkpoint_dir): os.makedirs(checkpoint_dir)
 			
-			ckpt_path = os.path.join(checkpoint_dir, f'model_{epoch}.ckpt')
+			ckpt_path = os.path.join(checkpoint_dir, f'model_{epoch}.pt')
 
 			torch.save({'config': main_config,
 						'hp_config': config,
