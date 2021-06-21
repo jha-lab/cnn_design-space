@@ -426,7 +426,8 @@ def train(config,
 			if type(config['optimizer'][opt][hp]) is not float and type(config['optimizer'][opt][hp]) is not int:
 				if type(config['optimizer'][opt][hp]) is list:
 					for i in range(len(config['optimizer'][opt][hp])):
-						config['optimizer'][opt][hp][i] = config['optimizer'][opt][hp][i].sample()
+						if type(config['optimizer'][opt][hp][i]) is not float and type(config['optimizer'][opt][hp][i]) is not int:
+							config['optimizer'][opt][hp][i] = config['optimizer'][opt][hp][i].sample()
 				else:
 					config['optimizer'][opt][hp] = config['optimizer'][opt][hp].sample()
 		optimizer = eval(f'optim.{opt}(model.parameters(), **config["optimizer"][opt])')
