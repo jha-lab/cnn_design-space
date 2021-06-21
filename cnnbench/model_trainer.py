@@ -15,7 +15,8 @@ import torch.nn.functional as F
 
 from ray import tune
 from ray.tune import CLIReporter
-from ray.tune.schedulers import ASHAScheduler
+from ray.tune.schedulers import ASHAScheduler, MedianStoppingRule
+from ray.tune.suggest.hebo import HEBOSearch
 # os.environ['TUNE_DISABLE_AUTO_CALLBACK_LOGGERS'] = "1"
 
 import numpy as np
@@ -43,8 +44,11 @@ from matplotlib import pyplot as plt
 
 
 LOG_INTERVAL = 10
-NUM_SAMPLES = 32 
+NUM_SAMPLES = 64 
 KEEP_TRIALS = False
+HP_SCHDLR = 'ASHA' # One in ['ASHA', 'MSR']
+HP_ALGO = 'RAND' # One in ['RAND', 'HEBO']
+EARLY_STOP = True
 
 
 def worker(config: dict, 
@@ -126,21 +130,49 @@ def worker(config: dict,
 					 	 	{'T_0': tune.choice([10, 20]),
 					 	 	 'T_mult': tune.choice([1, 2, 4])}}])}
 
-		# Implement Asynchronous Successive Halving scheduler
-		scheduler = ASHAScheduler(
-			time_attr='training_iteration',
-	        metric="val_loss",
-	        mode="min",
-	        max_t=config['epochs'],
-	        grace_period=1,
-	        reduction_factor=2)
+		if HP_SCHDLR == 'ASHA':
+			# Implement Asynchronous Successive Halving scheduler
+			scheduler = ASHAScheduler(
+				time_attr="training_iteration",
+		        metric="val_loss",
+		        mode="min",
+		        max_t=config['epochs'],
+		        grace_period=10,
+		        reduction_factor=2)
 
-		# Implement early stopping.  
-		stopper = tune.stopper.ExperimentPlateauStopper(
-			metric="val_loss", 
-			top=2, 
-			mode="min", 
-			patience=10)
+			if HP_ALGO == 'HEBO':
+				search_alg = HEBOSearch(
+					metric="val_loss",
+					mode="min",
+					max_concurrent=4)
+			else:
+				search_alg = None
+		elif HP_SCHDLR == 'MSR':
+			# Implement Median Stopping Rule
+			scheduler = MedianStoppingRule(
+				time_attr="training_iteration",
+				metric="val_loss",
+				mode="min",
+				grace_period=10)
+
+			if HP_ALGO == 'HEBO':
+				search_alg = HEBOSearch(
+					metric="val_loss",
+					mode="min",
+					max_concurrent=4)
+			else:
+				search_alg = None
+
+		if EARLY_STOP:
+			# Implement early stopping.  
+			stopper = tune.stopper.ExperimentPlateauStopper(
+				metric="val_loss", 
+				top=4, 
+				std=1e-5,
+				mode="min", 
+				patience=50)
+		else:
+			stopper = None
 
 		assert ckpt_interval == 1, 'Checkpoint interval should be 1 for early stopping'
 
@@ -156,6 +188,9 @@ def worker(config: dict,
 		print(f'{pu.bcolors.OKGREEN}Selected batch size:{pu.bcolors.ENDC} {small_batch_config["train_batch_size"]}')
 
 		print(f'{pu.bcolors.OKBLUE}Running automatic hyper-parameter tuning{pu.bcolors.ENDC}')
+
+		print(f'{pu.bcolors.OKBLUE}Using scheduler: {HP_SCHDLR} w/ search algo: {HP_ALGO} ' \
+			+ f'{"w/" if EARLY_STOP else "w/o"} early stopping{pu.bcolors.ENDC}')
 
 		# Run automatic hyper-parameter tuning
 		result = tune.run(
@@ -179,6 +214,7 @@ def worker(config: dict,
 	        checkpoint_score_attr='min-val_loss', # Stores checkpoint with minimum loss
 	        stop=stopper, # Early stopping
 	        scheduler=scheduler,
+	        search_alg=search_alg,
 	        progress_reporter=reporter)
 
 		best_trial = result.get_best_trial(metric="val_loss", mode="min", scope="last")
@@ -345,6 +381,7 @@ def train(config,
 	    auto_tune (bool): if ray-tune is running
 	    checkpointing (bool, optional): to checkpoint trained models
 	    ckpt_interval (int, optional): checkpointing interval
+	    checkpoint_dir (None, optional): directory where checkpoint is stored
 	    gpuFrac (float): fraction of GPU memory to be alloted for training given model
 	
 	Raises:
@@ -385,6 +422,13 @@ def train(config,
 		opt = list(config['optimizer'].keys())[0]
 		if opt not in optims:
 			raise ValueError(f'Optimizer {opt} not supported in PyTorch')
+		for hp in config['optimizer'][opt].keys():
+			if type(config['optimizer'][opt][hp]) is not float and type(config['optimizer'][opt][hp]) is not int:
+				if type(config['optimizer'][opt][hp]) is list:
+					for i in range(len(config['optimizer'][opt][hp])):
+						config['optimizer'][opt][hp][i] = config['optimizer'][opt][hp][i].sample()
+				else:
+					config['optimizer'][opt][hp] = config['optimizer'][opt][hp].sample()
 		optimizer = eval(f'optim.{opt}(model.parameters(), **config["optimizer"][opt])')
 	else:
 		opt = 'AdamW'
@@ -396,6 +440,9 @@ def train(config,
 		schdlr = list(config['scheduler'].keys())[0]
 		if schdlr not in shdlrs:
 			raise ValueError(f'Scheduler {schdlr} not supported in PyTorch')
+		for hp in config['scheduler'][schdlr].keys():
+			if type(config['scheduler'][schdlr][hp]) is not float and type(config['scheduler'][schdlr][hp]) is not int:
+				config['scheduler'][schdlr][hp] = config['scheduler'][schdlr][hp].sample()
 		scheduler = eval(f'optim.lr_scheduler.{schdlr}(optimizer, **config["scheduler"][schdlr])')
 	else:
 		schdlr = 'CosineAnnealingLR'
@@ -412,9 +459,27 @@ def train(config,
 
 	start_time = time.time()
 
+	last_epoch = 0
 	batch_size = 0
 
-	for epoch in range(1, main_config['epochs'] + 1):
+	if checkpoint_dir:
+		print(f'{pu.bcolors.OKBLUE}Loading from checkpoint.{pu.bcolors.ENDC}')
+		for ckpt in os.listdir(checkpoint_dir):
+			if ckpt.startswith('model'):
+				full_file_name = os.path.join(checkpoint_dir, ckpt)
+		checkpoint = torch.load(full_file_name)
+		last_epoch = checkpoint['epochs'][-1]
+		model.load_state_dict(checkpoint['model_state_dict'])
+		optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+		scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
+		train_losses = checkpoint['train_losses']
+		val_losses = checkpoint['val_losses']
+		learning_rates = checkpoint['learning_rates']
+		train_accuracies = checkpoint['train_accuracies']
+		test_accuracies = checkpoint['test_accuracies']
+		times = checkpoint['times'] # Can lead to non-monotonic times
+		
+	for epoch in range(last_epoch + 1, main_config['epochs'] + 1):
 		# Run training
 		model.train()
 		for batch_idx, (data, target) in enumerate(train_loader):
