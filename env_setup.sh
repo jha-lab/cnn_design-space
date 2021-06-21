@@ -15,3 +15,6 @@ conda install pyyaml
 conda install scikit-learn
 conda install -c conda-forge tqdm ipywidgets matplotlib
 conda install -c conda-forge ray-tune
+
+# Install pip dependencies
+pip install HEBO
