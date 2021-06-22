@@ -17,6 +17,7 @@ from ray import tune
 from ray.tune import CLIReporter
 from ray.tune.schedulers import ASHAScheduler, MedianStoppingRule
 from ray.tune.suggest.hebo import HEBOSearch
+os.environ['TUNE_GLOBAL_CHECKPOINT_S'] = "20"
 # os.environ['TUNE_DISABLE_AUTO_CALLBACK_LOGGERS'] = "1"
 
 import numpy as np
@@ -44,7 +45,7 @@ from matplotlib import pyplot as plt
 
 
 LOG_INTERVAL = 10
-NUM_SAMPLES = 64 
+NUM_SAMPLES = 32 
 KEEP_TRIALS = False
 HP_SCHDLR = 'ASHA' # One in ['ASHA', 'MSR']
 HP_ALGO = 'RAND' # One in ['RAND', 'HEBO']
@@ -70,9 +71,6 @@ def worker(config: dict,
 	    ckpt_interval (int, optional): checkpointing interval. If "-1", only last checkpoint is
 	    	saved
 	    save_fig (bool, optional): to save the learning curves
-	
-	No Longer Raises:
-	    ValueError: if an input parameter is not supported, or GPU device isn't found
 	"""
 	torch.manual_seed(0)
 
@@ -168,9 +166,9 @@ def worker(config: dict,
 			stopper = tune.stopper.ExperimentPlateauStopper(
 				metric="val_loss", 
 				top=4, 
-				std=1e-5,
+				std=1e-4,
 				mode="min", 
-				patience=50)
+				patience=30)
 		else:
 			stopper = None
 
@@ -183,7 +181,7 @@ def worker(config: dict,
 
 		# Implement trial runs to see if model fits in half the GPU memory. 
 		# Gives robust batch sizes for automatic tuning.
-		small_batch_config = run_trial(config, graphObject, model_dir, gpuFrac=0.45)
+		small_batch_config = run_trial(config, graphObject, model_dir, gpuFrac=0.4)
 		
 		print(f'{pu.bcolors.OKGREEN}Selected batch size:{pu.bcolors.ENDC} {small_batch_config["train_batch_size"]}')
 
