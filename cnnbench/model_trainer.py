@@ -45,7 +45,7 @@ from matplotlib import pyplot as plt
 
 
 LOG_INTERVAL = 10
-NUM_SAMPLES = 32 
+NUM_SAMPLES = 64 
 KEEP_TRIALS = False
 HP_SCHDLR = 'ASHA' # One in ['ASHA', 'MSR']
 HP_ALGO = 'RAND' # One in ['RAND', 'HEBO']
@@ -467,6 +467,7 @@ def train(config,
 			if ckpt.startswith('model'):
 				full_file_name = os.path.join(checkpoint_dir, ckpt)
 		checkpoint = torch.load(full_file_name)
+		epochs = checkpoint['epochs']
 		last_epoch = checkpoint['epochs'][-1]
 		model.load_state_dict(checkpoint['model_state_dict'])
 		optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
