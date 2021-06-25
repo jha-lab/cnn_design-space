@@ -25,7 +25,8 @@ def human_format(num, precision=2, separator=''):
         magnitude += 1
         num /= 1000.0
 
-    suffixes = ['', 'K', 'M', 'G', 'T', 'P', 'Qa', 'Qt']
+    suffixes = ['', 'K', 'M', 'B', 'T']
+    # Kilo, Million, Billion, Trillion
 
     return '{num:.{precision}f}{separator}{suffix}'.format(
         num=num, precision=precision, separator=separator, suffix=suffixes[magnitude])
