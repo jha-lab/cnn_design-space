@@ -216,7 +216,7 @@ class CNNBenchModel(nn.Module):
 
 			# Correcting groups if channels % groups != 0
 			groups = int(groups)
-			while channels % groups != 0 or input_channels % groups != 0:
+			while channels_conv % groups != 0 or input_channels % groups != 0:
 				groups -= 1
 
 			if '-ps' in op:
@@ -271,7 +271,14 @@ class CNNBenchModel(nn.Module):
 			groups = 1 if groups is None \
 				else groups.group(0)[2:] 
 
-			return ChannelShuffle(groups=int(groups))
+			return nn.ChannelShuffle(groups=int(groups))
+
+		elif op.startswith('upsample'):
+			size = re.search('-s([0-9]+)', op)
+			size = self.config['image_size'] if size is None \
+				else size.group(0)[2:]
+
+			return nn.UpsamplingBilinear2d(size=int(size))
 
 		elif op.startswith('maxpool'):
 			kernel_size = re.search('([0-9]+)x([0-9]+)', op)
@@ -314,6 +321,9 @@ class CNNBenchModel(nn.Module):
 									self.projection(input_channels, channels))
 			return nn.AvgPool2d(kernel_size=(int(kernel_size[0]), int(kernel_size[1])),
 								stride=int(stride), padding=int(padding))
+
+		elif op == 'global-avg-pool':
+			return nn.AdaptiveAvgPool2d(1)
 
 		elif op.startswith('dense-'):
 			size = re.search('([0-9]+)', op)
@@ -440,15 +450,3 @@ class CNNBenchModel(nn.Module):
 		assert all([vertex_channels[v] >= desired_vertex_channels[v] for v in range(num_vertices)])
 
 		return vertex_channels
-
-
-class ChannelShuffle(nn.Module):
-    def __init__(self, groups: int):
-        super().__init__()
-        self.groups = groups
-
-    def forward(self, x):
-        '''Channel shuffle: [N,C,H,W] -> [N,g,C/g,H,W] -> [N,C/g,g,H,w] -> [N,C,H,W]'''
-        N, C, H, W = x.size()
-
-        return x.view(N, self.groups, C // self.groups, H, W).permute(0, 2, 1, 3, 4).reshape(N, C, H, W)
