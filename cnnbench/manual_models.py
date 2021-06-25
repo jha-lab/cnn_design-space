@@ -1,4 +1,4 @@
-# Builds PyTorch model for the given Graph Object
+# Builds CNNBench specification graphs for popular networks
 
 # Author : Shikhar Tuli
 
