@@ -10,6 +10,7 @@ import numpy as np
 import yaml
 import argparse
 import torch
+import math
 
 from library import GraphLib, Graph
 from model_trainer import worker
@@ -20,7 +21,11 @@ SUPPORTED_MODELS = ['lenet', 'alexnet', 'vgg11', 'vgg13',
 					'vgg16', 'vgg19', 'resnet18', 'resnet34', 
 					'resnet50', 'resnet101', 'resnet152',
 					'shufflenet', 'mobilenet', 'googlenet',
-					'inception', 'xception']
+					'inception', 'xception', 'efficientnet-b0',
+					'efficientnet-b1', 'efficientnet-b2', 
+					'efficientnet-b3', 'efficientnet-b4',
+					'efficientnet-b5', 'efficientnet-b6',
+					'efficientnet-b7', 'efficientnet-l2']
 # TODO: add resnext, wide_resnet, inceptionv3, squeezenet, densenet
 
 
@@ -564,7 +569,176 @@ def get_manual_graph(config: dict, model_name: str):
 
 		graphObject = Graph(model_graph, graph_util.hash_graph(model_graph, hash_algo))
 
+	elif model_name.startswith('efficientnet'):
+
+		block_args = [
+			{'kernel_size': 3, 'num_repeat': 1, 'input_filters': 32, 'output_filters': 16,
+				'expand_ratio': 1, 'id_skip': True, 'stride': 1, 'se_ratio': 0.25},
+			{'kernel_size': 3, 'num_repeat': 2, 'input_filters': 16, 'output_filters': 24,
+				'expand_ratio': 6, 'id_skip': True, 'stride': 2, 'se_ratio': 0.25},
+			{'kernel_size': 5, 'num_repeat': 2, 'input_filters': 24, 'output_filters': 40,
+				'expand_ratio': 6, 'id_skip': True, 'stride': 2, 'se_ratio': 0.25},
+			{'kernel_size': 3, 'num_repeat': 3, 'input_filters': 40, 'output_filters': 80,
+				'expand_ratio': 6, 'id_skip': True, 'stride': 2, 'se_ratio': 0.25},
+			{'kernel_size': 5, 'num_repeat': 3, 'input_filters': 80, 'output_filters': 112,
+				'expand_ratio': 6, 'id_skip': True, 'stride': 1, 'se_ratio': 0.25},
+			{'kernel_size': 5, 'num_repeat': 4, 'input_filters': 112, 'output_filters': 192,
+				'expand_ratio': 6, 'id_skip': True, 'stride': 2, 'se_ratio': 0.25},
+			{'kernel_size': 3, 'num_repeat': 1, 'input_filters': 192, 'output_filters': 320,
+				'expand_ratio': 6, 'id_skip': True, 'stride': 1, 'se_ratio': 0.25}
+		]
+
+		def _round_filters(filters, width_coefficient, depth_divisor):
+			"""Round number of filters based on width multiplier."""
+
+			filters *= width_coefficient
+			new_filters = int(filters + depth_divisor / 2) // depth_divisor * depth_divisor
+			new_filters = max(depth_divisor, new_filters)
+			# Make sure that round down does not go down by more than 10%.
+			if new_filters < 0.9 * filters:
+				new_filters += depth_divisor
+			return int(new_filters)
+
+
+		def _round_repeats(repeats, depth_coefficient):
+			"""Round number of repeats based on depth multiplier."""
+
+			return int(math.ceil(depth_coefficient * repeats))
+
+		def _mb_conv_block(block_args, input_filters, output_filters, stride, drop_rate=None):
+			"""Mobile Inverted Residual Bottleneck."""
+
+			has_se = (block_args['se_ratio'] is not None) and (0 < block_args['se_ratio'] <= 1)
+
+			labels = ['input']
+
+			# Expansion phase
+			filters = input_filters * block_args['expand_ratio']
+			if block_args['expand_ratio'] != 1:
+				labels.append(f'conv1x1-c{filters}-bn-relu')
+
+			# Depthwise Convolution
+			labels.append(f'conv{block_args["kernel_size"]}x{block_args["kernel_size"]}-s{stride}-dw-p1-bn-silu')
+			in_phase_idx = len(labels) - 1
+
+			# Squeeze and Excitation phase
+			if has_se:
+				num_reduced_filters = max(1, int(input_filters * block_args['se_ratio']))
+
+				# We use add operation instead of multiply. Addition would use interpolation
+				# while creating the PyTorch model
+				labels.append('global-avg-pool')
+				labels.append(f'conv1x1-c{num_reduced_filters}-bn-silu')
+				labels.append(f'conv1x1-c{filters}-bn-silu')
+
+				se_idx = len(labels) - 1
+
+			# Output phase
+			labels.append(f'conv1x1-c{output_filters}-bn-silu')
+			out_phase_idx = len(labels) - 1
+
+			skip_connect = False
+
+			if block_args['id_skip'] and stride == 1 \
+				and input_filters == output_filters:
+
+				if drop_rate and (drop_rate > 0):
+					labels.append(f'dropout-p{round(drop_rate * 10)}')
+
+				skip_connect = True
+
+			labels.append('output')
+
+			matrix = np.eye(len(labels), k=1, dtype=np.int8)
+
+			if skip_connect: matrix[0, -1] = 1
+			if has_se: matrix[in_phase_idx, out_phase_idx] = 1
+
+			return (matrix, labels)
+		
+		# Adapted from the Keras implementation: 
+		# https://github.com/qubvel/efficientnet/blob/master/efficientnet/model.py
+		def _efficientnet(width_coefficient, 
+						  depth_coefficient, 
+						  resolution, 
+						  dropout_rate=0.2, 
+						  drop_connect_rate=0.2,
+						  depth_divisor=8,
+						  block_args=block_args): 
+			model_graph = []
+
+			filters = _round_filters(32, width_coefficient, depth_divisor)
+
+			if resolution == config['image_size']:
+				conv_module_1 = (np.eye(3, k=1, dtype=np.int8),
+					['input', f'conv3x3-c{filters}-s2-p1-bn-silu', 'output'])
+			else:
+				assert resolution > config['image_size']
+				conv_module_1 = (np.eye(4, k=1, dtype=np.int8),
+					['input', f'upsample-s{resolution}', f'conv3x3-c{filters}-s2-p1-bn-silu', 'output'])
+
+			model_graph.append(conv_module_1)
+
+			num_blocks_total = sum(block_args['num_repeat'] for block_args in block_args)
+			block_num = 0
+
+			for idx, block_args in enumerate(block_args):
+				# Update block input and output filters based on depth multiplier.
+				input_filters = _round_filters(block_args['input_filters'], width_coefficient, depth_divisor)
+				output_filters = _round_filters(block_args['output_filters'], width_coefficient, depth_divisor)
+				num_repeat = _round_repeats(block_args['num_repeat'], depth_coefficient)
+
+				# The first block needs to take care of stride and filter size increase.
+				drop_rate = drop_connect_rate * float(block_num) / num_blocks_total
+
+				model_graph.append(_mb_conv_block(block_args, input_filters, output_filters, 
+					block_args['stride'], drop_rate))
+
+				block_num += 1
+				if num_repeat > 1:
+					input_filters = output_filters
+
+					for bidx in range(num_repeat - 1):
+						drop_rate = drop_connect_rate * float(block_num) / num_blocks_total
+						model_graph.append(_mb_conv_block(block_args, input_filters, output_filters, 1, drop_rate))
+
+						block_num += 1
+
+			conv_module = (np.eye(3, k=1, dtype=np.int8),
+				['input', f'conv1x1-c{_round_filters(1280, width_coefficient, depth_divisor)}-bn-relu', 'output'])
+
+			model_graph.append(conv_module)
+
+			head_module = (np.eye(5, k=1, dtype=np.int8),
+				['input', 'global-avg-pool', f'dropout-p{round(drop_rate * 10)}', 'dense_classes', 'output'])
+
+			model_graph.append(head_module)
+
+			return model_graph
+
+		if model_name == 'efficientnet-b0':
+			model_graph = _efficientnet(1.0, 1.0, 224, 0.2)
+		elif model_name == 'efficientnet-b1':
+			model_graph = _efficientnet(1.0, 1.1, 240, 0.2)
+		elif model_name == 'efficientnet-b2':
+			model_graph = _efficientnet(1.1, 1.2, 260, 0.3)
+		elif model_name == 'efficientnet-b3':
+			model_graph = _efficientnet(1.2, 1.4, 300, 0.3)
+		elif model_name == 'efficientnet-b4':
+			model_graph = _efficientnet(1.4, 1.8, 380, 0.4)
+		elif model_name == 'efficientnet-b5':
+			model_graph = _efficientnet(1.6, 2.2, 465, 0.4)
+		elif model_name == 'efficientnet-b6':
+			model_graph = _efficientnet(1.8, 2.6, 528, 0.5)
+		elif model_name == 'efficientnet-b7':
+			model_graph = _efficientnet(2.0, 3.1, 600, 0.5)
+		elif model_name == 'efficientnet-l2':
+			model_graph = _efficientnet(4.3, 5.3, 800, 0.5)
+
+		graphObject = Graph(model_graph, graph_util.hash_graph(model_graph, hash_algo))
+
 	return graphObject
+
 
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser(
