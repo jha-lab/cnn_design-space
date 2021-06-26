@@ -1,7 +1,5 @@
-# Generate a library of all graphs up to structure and label isomorphism.
-
-# Code built upon https://github.com/google-research/nasbench/blob/
-#   master/nasbench/scripts/generate_graphs.py
+# Generate a library of all graphs up to structure and label isomorphism 
+# and add embeddings and neighbours for every graph in the library.
 	 
 # Author : Shikhar Tuli
 
@@ -78,7 +76,7 @@ class GraphLib(object):
 		print(f'{pu.bcolors.OKGREEN}Graph library created!{pu.bcolors.ENDC} ' \
 			+ f'\n{len(self.library)} graphs within the design space.')
 
-	def build_embeddings(self, embedding_size: int, algo='MDS', kernel='WeisfeilerLehman', neighbors=100, n_jobs=8):
+	def build_embeddings(self, embedding_size: int, algo='MDS', kernel='GraphEditDistance', neighbors=100, n_jobs=8):
 		"""Build the embeddings of all Graphs in GraphLib using MDS
 		
 		Args:
@@ -89,11 +87,11 @@ class GraphLib(object):
 					- 'GD'
 			kernel (str, optional): the kernel to be used for computing the dissimilarity 
 				matrix. Can be any of the following:
+					- 'GraphEditDistance'
 					- 'WeisfeilerLehman'
 					- 'NeighborhoodHash'
 					- 'RandomWalkLabeled'
-					- 'GraphEditDistance'
-				The default value is 'WeisfeilerLehman'
+				The default value is 'GraphEditDistance'
 			neighbors (int, optional): number of nearest neighbors to save for every graph
 			n_jobs (int, optional): number of parrallel jobs for joblib
 		"""
@@ -103,7 +101,7 @@ class GraphLib(object):
 		graph_list = [self.library[i].graph for i in range(len(self))]
 
 		# Generate dissimilarity_matrix using the specified kernel
-		diss_mat = graph_util.generate_dissimilarity_matrix(graph_list, kernel=kernel, n_jobs=n_jobs)
+		diss_mat = graph_util.generate_dissimilarity_matrix(graph_list, self.config, kernel=kernel, n_jobs=n_jobs)
 
 		# Generate embeddings using MDS or GD
 		if algo == 'MDS':
@@ -264,6 +262,9 @@ class Graph(object):
 
 
 def generate_graphs(config, check_isomorphism = True):
+
+	# Code built upon https://github.com/google-research/nasbench/blob/
+	# master/nasbench/scripts/generate_graphs.py
 
 	total_modules = 0	# Total number of modules (including isomorphisms)
 	total_heads = 0 	# Total number of heads

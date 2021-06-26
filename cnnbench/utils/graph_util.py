@@ -1,4 +1,4 @@
-# Utility functions for graph generation
+# Utility functions for graph generation and distance computation.
 
 # Author : Shikhar Tuli
 
@@ -7,6 +7,14 @@ import hashlib
 import itertools
 
 import numpy as np
+import networkx as nx
+import re
+
+from tqdm.notebook import tqdm
+from itertools import combinations
+from joblib import Parallel, delayed
+
+from utils import print_util as pu
 
 
 def gen_is_edge_fn(bits):
@@ -260,18 +268,174 @@ def compare_modules(matrix1, matrix2):
     return False
 
 
-def generate_dissimilarity_matrix(graph_list: list, kernel='WeisfeilerLehman', n_jobs=8):
+def generate_dissimilarity_matrix(graph_list: list, config: dict, kernel='GraphEditDistance', n_jobs=8, approx=1):
     """Generate the dissimilarity matrix which is N x N, for N graphs 
     in the design space
     
     Args:
-        graph_list (list[list[tuple(np.ndarray, list[str])]): list of graphs, which are lists of
+        graph_list (list): list of graphs, which are lists of
             tuples of adjacency matrix and ops
+        config (dict): the configuration dictionary with the allowed operations
         kernel (str, optional): the kernel to be used for computing the dissimilarity matrix. The
-            default value is 'WeisfeilerLehman'
+            default value is 'GraphEditDistance'
         n_jobs (int, optional): number of parrallel jobs for joblib
+        approx (int, optional): number of approximations to be implemented. Used when kernel = 'GraphEditDistance'.
     
     Returns:
         dissimilarity_matrix (np.ndarray): dissimilarity matrix
+    
+    Raises:
+        NotImplementedError: if kernel provided is not implemented
     """
-    raise NotImplementedError
+    if kernel != 'GraphEditDistance':
+        raise NotImplementedError('Kernels other than GraphEditDistance are not implemented yet')
+
+    def get_nx_graph_list(graph_list):
+        nx_graph_list = []
+
+        # Convert modules to one adjacency matrix, labels pair
+        for graph in graph_list:
+            total_ops = sum(len(module[1]) for module in graph)
+
+            matrix = np.zeros((total_ops, total_ops))
+            labels = []
+            op_idx = 0
+            
+            for module in graph:
+                labels.extend(module[1])
+                num_ops = len(module[1])
+
+                matrix[op_idx:(op_idx+num_ops), op_idx:(op_idx+num_ops)] = module[0]
+                
+                try:
+                    # A connection from output of previous module to input of next module
+                    matrix[(op_idx+num_ops-1), (op_idx+num_ops)] = 1
+                except:
+                    pass
+                
+                op_idx += num_ops
+            
+            # Create networkx graph
+            nx_graph = nx.DiGraph(matrix)
+            nx.set_node_attributes(nx_graph, {i:label for i, label in enumerate(labels)}, 'label')
+            nx_graph_list.append(nx_graph)
+
+        return nx_graph_list
+
+    def get_ops_weights(config):
+        input_channels = config['default_channels']
+
+        ops_list = []
+        ops_weights = []
+
+        ops_list.extend(['input', 'output'])
+        ops_list.extend(config['base_ops'])
+        ops_list.extend(config['flatten_ops'])
+        ops_list.extend(config['dense_ops'])
+        ops_list.extend(['dense_classes'])
+
+        input_channels = config['default_channels']
+    
+        for op in ops_list:
+            if op == 'input': 
+                ops_weights.append(1)
+            elif op == 'output': 
+                ops_weights.append(5)
+            elif op.startswith('conv'):
+                kernel_size = re.search('([0-9]+)x([0-9]+)', op)
+                assert kernel_size is not None
+                kernel_size = kernel_size.group(0).split('x')
+                
+                output_channels = re.search('-c([0-9]+)', op)
+                output_channels = config['default_channels'] if output_channels is None \
+                    else int(channels_conv.group(0)[2:])
+                groups = re.search('-g([0-9]+)', op)
+                groups = 1 if groups is None else int(groups.group(0)[2:])
+                
+                # Group correction
+                while output_channels % groups != 0 or input_channels % groups != 0:
+                    groups -= 1
+                    
+                ops_weights.append(input_channels * output_channels * int(kernel_size[0]) * int(kernel_size[1]) // groups)
+            elif 'pool' in op:
+                if 'max' in op: 
+                    ops_weights.append(1) 
+                elif 'avg' in op:
+                     # avg-pool takes slightly more compute
+                    if 'global' in op:
+                        ops_weights.append(10)
+                    else:
+                        ops_weights.append(5)
+            elif op == 'flatten':
+                ops_weights.append(1)
+            elif op == 'channel_suffle':
+                ops_weights.append(5)
+            elif op == 'upsample':
+                ops_weights.append(5)
+            elif op.startswith('dense'):
+                size = re.search('([0-9]+)', op)
+                size = config['classes'] if size is None else int(size.group(0))
+                ops_weights.append(size)
+            elif op.startswith('dropout'):
+                ops_weights.append(1)
+            else:
+                print(f'Provided operation: {op} in the given configuration is not interpretable')
+                sys.exit(1)
+                
+        return ops_list, ops_weights
+        
+
+    def get_ged(i, j, dissimilarity_matrix, nx_graph_list, ops_list, ops_weights, dist_weight=0.1, approx=approx):
+
+        def node_subst_cost(node1, node2):
+            node1_idx, node2_idx = ops_list.index(node1['label']), ops_list.index(node2['label'])
+            return (1 + dist_weight * abs(node1_idx - node2_idx)) * \
+                abs(ops_weights[node1_idx] - ops_weights[node2_idx])
+            
+        def node_cost(node):
+            node_idx = ops_list.index(node['label'])
+            return ops_weights[node_idx]
+
+        def edge_cost(edge):
+            return 0.1
+
+        if approx == 0:
+            dissimilarity_matrix[i, j] = nx.graph_edit_distance(nx_graph_list[i], nx_graph_list[j],
+                                                                node_subst_cost=node_subst_cost, 
+                                                                node_del_cost=node_cost, 
+                                                                node_ins_cost=node_cost, 
+                                                                edge_del_cost=edge_cost,
+                                                                edge_ins_cost=edge_cost,
+                                                                timeout=10)
+        else:
+            count = 0
+            approx_dist = 0
+            for dist in nx.optimize_graph_edit_distance(nx_graph_list[i], nx_graph_list[j],
+                                                        node_subst_cost=node_subst_cost, 
+                                                        node_del_cost=node_cost, 
+                                                        node_ins_cost=node_cost, 
+                                                        edge_del_cost=edge_cost,
+                                                        edge_ins_cost=edge_cost):
+                approx_dist = dist
+                count += 1
+                if count == approx: break
+
+            dissimilarity_matrix[i, j] = approx_dist
+
+    ops_list, ops_weights = get_ops_weights(config)  
+
+    print(f'{pu.bcolors.OKGREEN}Generated operation weights{pu.bcolors.ENDC}')
+
+    nx_graph_list = get_nx_graph_list(graph_list)
+
+    print(f'{pu.bcolors.OKGREEN}Generated networkx graphs{pu.bcolors.ENDC}')
+
+    dissimilarity_matrix = np.zeros((len(graph_list), len(graph_list)))
+
+    Parallel(n_jobs=n_jobs, prefer='threads', require='sharedmem')(
+        delayed(get_ged)(i, j, dissimilarity_matrix, nx_graph_list, ops_list, ops_weights) \
+            for i, j in tqdm(list(combinations(range(len(graph_list)), 2)), desc='Generating dissimilarity matrix'))
+
+    dissimilarity_matrix = dissimilarity_matrix + np.transpose(dissimilarity_matrix)
+
+    return dissimilarity_matrix
