@@ -49,6 +49,7 @@ NUM_SAMPLES = 64
 KEEP_TRIALS = False
 HP_SCHDLR = 'ASHA' # One in ['ASHA', 'MSR']
 HP_ALGO = 'RAND' # One in ['RAND', 'HEBO']
+LIN_SS = False # Needs to be True for HEBO
 EARLY_STOP = True
 
 
@@ -108,25 +109,38 @@ def worker(config: dict,
 
 	else:
 		# Implementing a basic hyper-parameter search space
-		hp_config = {'optimizer':
-						tune.choice(
-						[{'Adam': 
-							{'lr': tune.loguniform(1e-5, 1e-2),
-							'betas': [tune.uniform(0.8, 0.95), tune.uniform(0.9, 0.999)],
-							'weight_decay': tune.loguniform(1e-5, 1e-3)}},
-						{'AdamW': 
-							{'lr': tune.loguniform(1e-5, 1e-2),
-							'betas': [tune.uniform(0.8, 0.95), tune.uniform(0.9, 0.999)],
-							'weight_decay': tune.loguniform(1e-5, 1e-3)}}]),	
-					 'scheduler':
-					 	tune.choice(
-					 	[{'CosineAnnealingLR':
-					 		{'T_max': config['epochs']}},
-					 	 {'ExponentialLR':
-					 		{'gamma': tune.uniform(0.8, 0.99)}},
-					 	 {'CosineAnnealingWarmRestarts':
-					 	 	{'T_0': tune.choice([10, 20]),
-					 	 	 'T_mult': tune.choice([1, 2, 4])}}])}
+		if not LIN_SS:
+			hp_config = {'optimizer':
+							tune.choice(
+							[{'Adam': 
+								{'lr': tune.loguniform(1e-5, 1e-2),
+								'betas': [tune.uniform(0.8, 0.95), tune.uniform(0.9, 0.999)],
+								'weight_decay': tune.loguniform(1e-5, 1e-3)}},
+							{'AdamW': 
+								{'lr': tune.loguniform(1e-5, 1e-2),
+								'betas': [tune.uniform(0.8, 0.95), tune.uniform(0.9, 0.999)],
+								'weight_decay': tune.loguniform(1e-5, 1e-3)}}]),	
+						 'scheduler':
+						 	tune.choice(
+						 	[{'CosineAnnealingLR':
+						 		{'T_max': config['epochs']}},
+						 	 {'ExponentialLR':
+						 		{'gamma': tune.uniform(0.8, 0.99)}},
+						 	 {'CosineAnnealingWarmRestarts':
+						 	 	{'T_0': tune.choice([10, 20]),
+						 	 	 'T_mult': tune.choice([1, 2, 4])}}])}
+		else:
+			# Implement linearized search space
+			hp_config = {'optimizer': tune.choice(['Adam', 'AdamW']),
+						 'lr': tune.uniform(1e-5, 1e-2),
+						 'beta1': tune.uniform(0.8, 0.95),
+						 'beta2': tune.uniform(0.9, 0.999),
+						 'weight_decay': tune.loguniform(1e-5, 1e-3),
+						 'scheduler': tune.choice(['CosineAnnealingLR', 'ExponentialLR', 'CosineAnnealingWarmRestarts']),
+						 'T_max': config['epochs'],
+						 'gamma': tune.uniform(0.8, 0.99),
+						 'T_0': tune.choice([10, 20]),
+						 'T_mult': tune.choice([1, 2, 4])}
 
 		if HP_SCHDLR == 'ASHA':
 			# Implement Asynchronous Successive Halving scheduler
@@ -314,8 +328,12 @@ def get_trial_name(trial: tune.trial.Trial):
         trial_name: string with trial name consisting of the optimizer, 
         	scheduler and a unique hash for the hyper-parameter configuration.
     """
-    opt = list(trial.config['optimizer'].keys())[0]
-    schdlr = list(trial.config['scheduler'].keys())[0]
+    if not LIN_SS:
+	    opt = list(trial.config['optimizer'].keys())[0]
+	    schdlr = list(trial.config['scheduler'].keys())[0]
+	else:
+		opt = trial.config['optimizer']
+    	schdlr = trial.config['scheduler']
     return '_'.join([opt,
     				 schdlr,
     				 hashlib.shake_128(str(trial.config).encode('utf-8')).hexdigest(5)])
@@ -417,18 +435,25 @@ def train(config,
 	optims = [opt[0] for opt in getmembers(optim)]
 
 	if 'optimizer' in config.keys():
-		opt = list(config['optimizer'].keys())[0]
-		if opt not in optims:
-			raise ValueError(f'Optimizer {opt} not supported in PyTorch')
-		for hp in config['optimizer'][opt].keys():
-			if type(config['optimizer'][opt][hp]) is not float and type(config['optimizer'][opt][hp]) is not int:
-				if type(config['optimizer'][opt][hp]) is list:
-					for i in range(len(config['optimizer'][opt][hp])):
-						if type(config['optimizer'][opt][hp][i]) is not float and type(config['optimizer'][opt][hp][i]) is not int:
-							config['optimizer'][opt][hp][i] = config['optimizer'][opt][hp][i].sample()
-				else:
-					config['optimizer'][opt][hp] = config['optimizer'][opt][hp].sample()
-		optimizer = eval(f'optim.{opt}(model.parameters(), **config["optimizer"][opt])')
+		if not LIN_SS:
+			opt = list(config['optimizer'].keys())[0]
+			if opt not in optims:
+				raise ValueError(f'Optimizer {opt} not supported in PyTorch')
+			for hp in config['optimizer'][opt].keys():
+				if type(config['optimizer'][opt][hp]) is not in [float, int]:
+					if type(config['optimizer'][opt][hp]) is list:
+						for i in range(len(config['optimizer'][opt][hp])):
+							if type(config['optimizer'][opt][hp][i]) is not in [float, int]:
+								config['optimizer'][opt][hp][i] = config['optimizer'][opt][hp][i].sample()
+					else:
+						config['optimizer'][opt][hp] = config['optimizer'][opt][hp].sample()
+			optimizer = eval(f'optim.{opt}(model.parameters(), **config["optimizer"][opt])')
+		else:
+			opt = config['optimizer']
+			if opt not in optims:
+				raise ValueError(f'Optimizer {opt} not supported in PyTorch')
+			optimizer = eval(f'optim.{opt}(model.parameters(), lr={config["lr"]}, ' \
+				+ f'betas=(config["beta1"], config["beta2"]), weight_decay={config["weight_decay"]})')
 	else:
 		opt = 'AdamW'
 		optimizer = optim.AdamW(model.parameters(), lr=0.0001, weight_decay=0.0001)
@@ -436,13 +461,27 @@ def train(config,
 	shdlrs = [sh[0] for sh in getmembers(optim.lr_scheduler)]
 
 	if 'scheduler' in config.keys():
-		schdlr = list(config['scheduler'].keys())[0]
-		if schdlr not in shdlrs:
-			raise ValueError(f'Scheduler {schdlr} not supported in PyTorch')
-		for hp in config['scheduler'][schdlr].keys():
-			if type(config['scheduler'][schdlr][hp]) is not float and type(config['scheduler'][schdlr][hp]) is not int:
-				config['scheduler'][schdlr][hp] = config['scheduler'][schdlr][hp].sample()
-		scheduler = eval(f'optim.lr_scheduler.{schdlr}(optimizer, **config["scheduler"][schdlr])')
+		if not LIN_SS:
+			schdlr = list(config['scheduler'].keys())[0]
+			if schdlr not in shdlrs:
+				raise ValueError(f'Scheduler {schdlr} not supported in PyTorch')
+			for hp in config['scheduler'][schdlr].keys():
+				if type(config['scheduler'][schdlr][hp]) is not float and type(config['scheduler'][schdlr][hp]) is not int:
+					config['scheduler'][schdlr][hp] = config['scheduler'][schdlr][hp].sample()
+			scheduler = eval(f'optim.lr_scheduler.{schdlr}(optimizer, **config["scheduler"][schdlr])')
+		else:
+			schdlr = config['scheduler']
+			if schdlr not in shdlrs:
+				raise ValueError(f'Scheduler {schdlr} not supported in PyTorch')
+			if schdlr == 'CosineAnnealingLR':
+				schdlr_args = {'T_max': config['T_max']}
+			elif schdlr == 'ExponentialLR':
+				schdlr_args = {'gamma': config['gamma']}
+			elif schdlr == 'CosineAnnealingWarmRestarts':
+				schdlr_args = {'T_0': config['T_0'], 'T_mult': config['T_mult']}
+			else:
+				raise ValueError(f'Scheduler {schdlr} not supported in search space yet')
+			scheduler = eval(f'optim.lr_scheduler.{schdlr}(optimizer, **schdlr_args)')
 	else:
 		schdlr = 'CosineAnnealingLR'
 		scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=int(main_config['epochs']))
