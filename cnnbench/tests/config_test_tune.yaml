@@ -19,7 +19,7 @@ train_batch_size: 128
 test_batch_size: 128
 
 # Architecture parameters
-module_vertices: 4
+module_vertices: 3
 head_vertices: 4
 max_edges: 9
 max_modules: 2
