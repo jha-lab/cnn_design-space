@@ -6,13 +6,16 @@
 
 import os
 import sys
+
 import yaml
 import numpy as np
-import itertools
-from tqdm.contrib.itertools import product
 import json
 
-from utils import graph_util, print_util as pu
+import itertools
+from tqdm.contrib.itertools import product
+from scipy.stats import zscore
+
+from utils import graph_util, embedding_util, print_util as pu
 
 
 HASH_SIMPLE = False
@@ -76,24 +79,40 @@ class GraphLib(object):
 		print(f'{pu.bcolors.OKGREEN}Graph library created!{pu.bcolors.ENDC} ' \
 			+ f'\n{len(self.library)} graphs within the design space.')
 
-	def build_embeddings(self, embedding_size: int, algo='MDS', kernel='GraphEditDistance', neighbors=100, n_jobs=8):
+	def build_embeddings(self, embedding_size: int, 
+						 algo='GD', 
+						 kernel='GraphEditDistance', 
+						 zscore_emb=True, 
+						 nbr_method='biased', 
+						 neighbors=100, 
+						 n_jobs=8):
 		"""Build the embeddings of all Graphs in GraphLib using MDS
 		
 		Args:
-			embedding_size (int): size of the embedding
-			algo (str): algorithm to use for generating embeddings. Can be any
-				of the following:
-					- 'MDS'
-					- 'GD'
-			kernel (str, optional): the kernel to be used for computing the dissimilarity 
-				matrix. Can be any of the following:
-					- 'GraphEditDistance'
-					- 'WeisfeilerLehman'
-					- 'NeighborhoodHash'
-					- 'RandomWalkLabeled'
-				The default value is 'GraphEditDistance'
-			neighbors (int, optional): number of nearest neighbors to save for every graph
-			n_jobs (int, optional): number of parrallel jobs for joblib
+		    embedding_size (int): size of the embedding
+		    algo (str): algorithm to use for generating embeddings. Can be any
+		    	of the following:
+		    		- 'GD'
+		    		- 'MDS'
+		    	The default value is 'GD'
+		    kernel (str, optional): the kernel to be used for computing the dissimilarity 
+		    	matrix. Can be any of the following:
+		    		- 'GraphEditDistance'
+		    		- 'WeisfeilerLehman'
+		    		- 'NeighborhoodHash'
+		    		- 'RandomWalkLabeled'
+		    	The default value is 'GraphEditDistance'
+		    zscore_emb (bool, optional): if True, embeddings are z-scored
+		    nbr_method (str, optional): method to use for finding the neighbors. Can be
+				any of the following:
+					- 'biased'
+					- 'distance'
+				The default value is 'biased'
+		    neighbors (int, optional): number of nearest neighbors to save for every graph
+		    n_jobs (int, optional): number of parrallel jobs for joblib
+		
+		Raises:
+		    NotImplementedError: Description
 		"""
 		print('Building embeddings for the Graph library')
 
@@ -106,11 +125,17 @@ class GraphLib(object):
 		# Generate embeddings using MDS or GD
 		if algo == 'MDS':
 			embeddings = embedding_util.generate_mds_embeddings(diss_mat, embedding_size=embedding_size, n_jobs=n_jobs)
+		elif algo == 'GD':
+			embeddings = embedding_util.generate_grad_embeddings(diss_mat, embedding_size=embedding_size, n_jobs=n_jobs, silent=True)
 		else:
-			embeddings = embedding_util.generate_grad_embeddings(diss_mat, embedding_size=embedding_size, silent=True)
+			raise NotImplementedError(f'Embedding algorithm: {algo} is not supported')
+
+		if zscore_emb:
+			# Z-score embeddings for efficient training on a neural network
+			embeddings = zscore(embeddings, axis=0)
 
 		# Get neighboring graph in the embedding space, for all Graphs
-		neighbor_idx = embedding_util.get_neighbors(embeddings, neighbors)
+		neighbor_idx = embedding_util.get_neighbors(embeddings, method=nbr_method, graph_list=graph_list, neighbors=neighbors)
 
 		# Update embeddings and neighbors of all Graphs in GraphLib
 		for i in range(len(self)):
