@@ -6,6 +6,8 @@ import numpy as np
 from sklearn.manifold import MDS
 from sklearn.metrics import pairwise_distances
 
+from tqdm.notebook import tqdm
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -21,7 +23,7 @@ def generate_mds_embeddings(dissimilarity_matrix, embedding_size: int, n_init=4,
         embedding_size (int): size of the embedding
         n_init (int, optional): number of times the SMACOF algorithm will be run with 
         	different initializations. The final results will be the best output of 
-        	the runs, determined by the run with the smallest final stres
+        	the runs, determined by the run with the smallest final stress
         max_iter (int, optional): maximum number of iterations of the SMACOF algorithm 
         	for a single run.
         n_jobs (int, optional): number of parrallel jobs for joblib
@@ -39,8 +41,8 @@ def generate_mds_embeddings(dissimilarity_matrix, embedding_size: int, n_init=4,
     return embeddings
 
 
-def generate_grad_embeddings(dissimilarity_matrix, embedding_size: int, epochs: int = 10, 
-		batch_size: int = 1024, silent: bool = False):
+def generate_grad_embeddings(dissimilarity_matrix, embedding_size: int, epochs: int = 100, 
+        batch_size: int = 1024, lr = 0.1, n_jobs = 8, silent: bool = False):
     """Generate embeddings using Gradient Descent on GPU
     
     Args:
@@ -48,6 +50,8 @@ def generate_grad_embeddings(dissimilarity_matrix, embedding_size: int, epochs: 
         embedding_size (int): size of the embedding
         epochs (int, optional): number of epochs
         batch_size (int, optional): batch size for the number of pairs to consider
+        lr (float, optional): learning rate
+        n_jobs (int, optional): number of parallel jobs 
         silent (bool, optional): whether to suppress output
     
     Returns:
@@ -91,9 +95,9 @@ def generate_grad_embeddings(dissimilarity_matrix, embedding_size: int, epochs: 
 
     # Create dataloader
     train_loader = DataLoader(DistanceDataset(dissimilarity_matrix), 
-        batch_size=batch_size, shuffle=True, pin_memory=True)
+        batch_size=batch_size, shuffle=True, pin_memory=True, num_workers=n_jobs)
 
-    device = torch.device("cuda")
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     # Instantiate the model
     model = GraphEmbeddingModel(len(dissimilarity_matrix), embedding_size)
@@ -101,17 +105,17 @@ def generate_grad_embeddings(dissimilarity_matrix, embedding_size: int, epochs: 
     model.train()
 
     # Instantiate the optimizer
-    optimizer = optim.Adam(model.parameters(), lr=0.002)
+    optimizer = optim.Adam(model.parameters(), lr=lr)
 
     # Instantiate the scheduler
-    scheduler = optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, 10)
+    scheduler = optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=10, T_mult=2)
 
     losses = []
-    report_interval = 100
+    report_interval = 1
 
     # Run training
-    for epoch in range(epochs):
-        print(f'Epoch: {epoch}')
+    for epoch in tqdm(range(epochs), desc='Training embeddings'):
+        if not silent: print(f'Epoch: {epoch}')
 
         for i, data_batch in enumerate(train_loader):
             graph_pairs = data_batch['graph_pairs'].to(device, non_blocking=True)
@@ -139,25 +143,56 @@ def generate_grad_embeddings(dissimilarity_matrix, embedding_size: int, epochs: 
     return embeddings
 
 
-def get_neighbors(embeddings, n: int):
+def get_neighbors(embeddings, method: str, graph_list: list, neighbors: int):
     """Get neighbor indices for all graphs from embeddings
     
     Args:
         embeddings (np.ndarray): embeddings array from generate_embeddings() or
             generate_naive_embeddings()
-        n (int): number of nearest neighbors to return
+        method (str): one in 'distance' or 'biased'
+        graph_list (list): list of graphs in the library. Required if
+            method = 'biased'
+        neighbors (int): number of neighbors
     
     Returns:
         neighbor_idx (np.ndarray): neighbor indices according to the order in the
             embeddings array
     """
-    # Generate distance matrix in the embeddings space
-    distance_matrix = pairwise_distances(embeddings, embeddings, metric='euclidean')
+    if method == 'distance':
+        # Generate distance matrix in the embeddings space
+        distance_matrix = pairwise_distances(embeddings, embeddings, metric='euclidean')
 
-    # Argmin should not return the same graph index
-    np.fill_diagonal(distance_matrix, np.inf)
+        # Argmin should not return the same graph index
+        np.fill_diagonal(distance_matrix, np.inf)
 
-    # Find neighbors greedily
-    neighbor_idx = np.argsort(distance_matrix, axis=1)[:, :n]
+        # Find neighbors greedily
+        neighbor_idx = np.argsort(distance_matrix, axis=1)[:, :neighbors]
+    elif method == 'biased':
+        # graph_list is required
+        assert graph_list is not None, 'graph_list is required with method = "biased"'
+
+        # Get biased overlap between graphs
+        def _get_overlap(curr_graph, query_graph):
+            overlap = 0
+            for i in range(len(curr_graph)):
+                # Basic tests
+                if i >= len(query_graph): break
+                if len(curr_graph[i][1]) != len(query_graph[i][1]): break
+
+                # Check if modules are the same
+                if (curr_graph[i][0] == query_graph[i][0]).all() and curr_graph[i][1] == query_graph[i][1]:
+                    overlap += 1
+                else:
+                    break
+
+            return overlap
+
+        neighbor_idx = np.zeros((embeddings.shape[0], neighbors))
+        ids = list(range(len(graph_list)))
+
+        for i in range(len(graph_list)):
+            # Sort indices based on overlap. Break ties with embedding distance
+            neighbor_idx[i, :] = sorted(ids, key=lambda idx: (-1*_get_overlap(graph_list[i], graph_list[idx]), \
+                float(pairwise_distances(embeddings[i, :].reshape(1, -1), embeddings[idx, :].reshape(1, -1)))))[1:neighbors+1]
 
     return neighbor_idx
