@@ -14,8 +14,6 @@ from tqdm.notebook import tqdm
 from itertools import combinations
 from joblib import Parallel, delayed
 
-from utils import print_util as pu
-
 
 def gen_is_edge_fn(bits):
     """Generate a boolean function for the edge connectivity.
@@ -381,8 +379,11 @@ def generate_dissimilarity_matrix(graph_list: list, config: dict, kernel='GraphE
             else:
                 print(f'Provided operation: {op} in the given configuration is not interpretable')
                 sys.exit(1)
+
+        # Weight ops by number of parameters in millions
+        op_weights = [op_w/1e6 for op_w in ops_weights] 
                 
-        return ops_list, ops_weights
+        return ops_list, op_weights
         
 
     def get_ged(i, j, dissimilarity_matrix, nx_graph_list, ops_list, ops_weights, dist_weight=0.1, approx=approx):
@@ -397,7 +398,7 @@ def generate_dissimilarity_matrix(graph_list: list, config: dict, kernel='GraphE
             return ops_weights[node_idx]
 
         def edge_cost(edge):
-            return 0.1
+            return 1e-9
 
         if approx == 0:
             dissimilarity_matrix[i, j] = nx.graph_edit_distance(nx_graph_list[i], nx_graph_list[j],
@@ -424,11 +425,7 @@ def generate_dissimilarity_matrix(graph_list: list, config: dict, kernel='GraphE
 
     ops_list, ops_weights = get_ops_weights(config)  
 
-    print(f'{pu.bcolors.OKGREEN}Generated operation weights{pu.bcolors.ENDC}')
-
     nx_graph_list = get_nx_graph_list(graph_list)
-
-    print(f'{pu.bcolors.OKGREEN}Generated networkx graphs{pu.bcolors.ENDC}')
 
     dissimilarity_matrix = np.zeros((len(graph_list), len(graph_list)))
 
