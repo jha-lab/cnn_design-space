@@ -23,7 +23,7 @@ CHANNEL_AXIS = 1
 
 
 class CNNBenchModel(nn.Module):
-	def __init__(self, config: dict, graphObject: 'Graph'):
+	def __init__(self, config: dict, graphObject: Graph):
 		"""Initialize the model
 		
 		Args:
@@ -100,6 +100,52 @@ class CNNBenchModel(nn.Module):
 			total_params += num_params
 
 		return total_params
+
+	def load_from_model(self, model: CNNBenchModel, method='biased'):
+		"""Load model weights from another CNNBenchModel that is a neighbor of
+		the current model
+		
+		Args:
+		    model (CNNBenchModel): neighbor model to load weights from
+		    method (str, optional): method to load model. Can be one of the
+		    	following:
+		    		- 'biased'
+		    		- 'all'
+		    	The default value is 'biased'
+		"""
+		assert method in ['biased', 'all'], 'Method provided should be either "biased" or "all"'
+
+		curr_graph = self.graphObject.graph
+		model_graph = model.graphObject.graph
+
+		for i in range(len(curr_graph)):
+            # Basic tests
+            if i >= len(model_graph): 
+            	if method == 'biased':
+            		break
+            	else:
+            		continue
+            if len(curr_graph[i][1]) != len(model_graph[i][1]): 
+            	if method == 'biased':
+            		break
+            	else:
+            		continue
+
+            # Check if modules are the same
+            if (curr_graph[i][0] == model_graph[i][0]).all() and curr_graph[i][1] == model_graph[i][1]:
+            	# Copy weights for the current module
+                num_vertices = len(curr_graph[i][1])
+
+                for v in range(1, num_vertices - 1):
+					setattr(self, f'op_m{i}_v{v}', getattr(model, f'op_m{i}_v{v}'))
+					setattr(self, f'proj_m{i}_v{v}', getattr(model, f'proj_m{i}_v{v}'))
+
+				setattr(self, f'proj_m{i}', getattr(model, f'proj_m{i}'))
+            else:
+                if method == 'biased':
+                	break
+                else:
+                	continue
 
 	def run_module(self, input, module_idx, matrix, labels):
 		"""Run a custom module using a proposed model spec.
