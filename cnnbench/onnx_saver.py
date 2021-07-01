@@ -18,17 +18,20 @@ from library import Graph, GraphLib
 from utils import print_util as pu
 
 
-def save_onnx(ckpt_path: str, config: dict, model_name: str, onnx_file_path: str = None):
+def save_onnx(ckpt_path: str, config: dict = None, model_name: str = None, onnx_file_path: str = None):
     """Saves ONNX file for the given PyTorch checkpoint
     
     Args:
         ckpt_path (str): checkpoint path for PyTorch model
-        config (dict): config dictionary
-        model_name (str): name of the manual model
+        config (dict, optional): config dictionary
+        model_name (str, optional): name of the manual model
         onnx_file_path (str, optional): path to save ONNX file. Defaults to
         	ckpt_path with different extension.
     """
     checkpoint = torch.load(ckpt_path)
+
+    if not config:
+    	config = checkpoint['config']
 
     if model_name:
     	graphObject = get_manual_graph(config, model_name)
