@@ -10,6 +10,9 @@ import numpy as np
 import networkx as nx
 import re
 
+from inspect import getmembers
+import torch.nn as nn
+
 from tqdm.notebook import tqdm
 from itertools import combinations
 from joblib import Parallel, delayed
@@ -353,8 +356,19 @@ def generate_dissimilarity_matrix(graph_list: list, config: dict, kernel='GraphE
                 # Group correction
                 while output_channels % groups != 0 or input_channels % groups != 0:
                     groups -= 1
+
+                non_linearity = op.split('-')[-1]
+
+                activations = [act[0] for act in getmembers(nn.modules.activation)]
+                activations_lower = [act.lower() for act in activations]
                     
-                ops_weights.append(input_channels * output_channels * int(kernel_size[0]) * int(kernel_size[1]) // groups)
+                try:
+                    activation_index = activations_lower.index(non_linearity)
+                except:
+                    raise ValueError('Non linearity not supported in PyTorch')
+                    
+                ops_weights.append((input_channels * output_channels * int(kernel_size[0]) * int(kernel_size[1]) \
+                    + activation_index) // groups)
             elif 'pool' in op:
                 if 'max' in op: 
                     ops_weights.append(1) 
