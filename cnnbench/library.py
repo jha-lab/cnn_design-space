@@ -15,11 +15,12 @@ import itertools
 from tqdm.notebook import tqdm
 from tqdm.contrib.itertools import product
 from scipy.stats import zscore
+from copy import deepcopy
 
 from utils import graph_util, embedding_util, print_util as pu
 
 
-HASH_SIMPLE = False
+HASH_SIMPLE = True
 ALLOW_2_V = False
 
 
@@ -83,6 +84,98 @@ class GraphLib(object):
 
 		print(f'{pu.bcolors.OKGREEN}Graph library created!{pu.bcolors.ENDC} ' \
 			+ f'\n{len(self.library)} graphs within the design space.')
+
+	def get_interpolants(self,
+	                     graph1: 'Graph',
+	                     graph2: 'Graph',
+	                     old_modules_per_stack: int,
+	                     new_modules_per_stack: int,
+	                     check_isomorphism=True):
+	    """Interpolates between two neighbors with finer grained stacks
+
+	        Args:
+	            graph1 (Graph): first graph in the library
+	            graph2 (Graph): second graph in the library
+	            old_modules_per_stack (int): old modules per stack
+	            new_modules_per_stack (int): new modules per stack
+	            check_isomorphism (bool, optional): if True, isomorphism is checked 
+	                for every graph
+
+	        Returns:
+	            interpolants (list): list of Graph objects between graph1 and graph2
+	    """
+	    assert new_modules_per_stack <= old_modules_per_stack and old_modules_per_stack % new_modules_per_stack == 0, \
+	        'Old number of modules per stack should be divisible by new number of modules per stack'
+
+	    interpolants = []
+
+	    stack_mult = old_modules_per_stack // new_modules_per_stack
+
+	    smaller_length = min(len(graph1.graph) - 1, len(graph2.graph) - 1)
+	    larger_length = max(len(graph1.graph) - 1, len(graph2.graph) - 1)
+	    different_lengths = smaller_length != larger_length
+
+	    neighbor_config = deepcopy(self.config)
+
+	    flatten_ops, dense_ops = [], []
+
+	    flatten_ops.append(graph1.graph[-1][1][1])
+	    dense_ops.extend(graph1.graph[-1][1][2:-1])
+
+	    flatten_ops.append(graph2.graph[-1][1][1])
+	    dense_ops.extend(graph2.graph[-1][1][2:-1])
+
+	    neighbor_config['flatten_ops'] = list(set(flatten_ops))
+	    neighbor_config['dense_ops'] = list(set(dense_ops))
+
+	    graphs_stack = []
+
+	    for stack in range(smaller_length//old_modules_per_stack):
+	        base_ops = graph1.graph[stack * old_modules_per_stack][1][1:-1] \
+	            + graph2.graph[stack * old_modules_per_stack][1][1:-1]
+	        neighbor_config['base_ops'] = list(set(base_ops))
+
+	        neighbor_config['max_modules'] = old_modules_per_stack
+
+	        if stack == smaller_length//old_modules_per_stack - 1:
+	            add_head = True
+	        else:
+	            add_head = False
+
+	        graph_buckets = generate_graphs(neighbor_config, modules_per_stack=new_modules_per_stack,
+	            check_isomorphism=check_isomorphism, create_graphs=True, add_head=add_head)
+
+	        graphs_stack.append([Graph(graph, graph_hash) for graph_hash, graph in graph_buckets.items()])
+
+	    for stacks in itertools.product(*graphs_stack):
+	        graph = []
+	        for stack in stacks:
+	            graph.extend(stack.graph)
+
+	        if HASH_SIMPLE:
+	            graph_hash = graph_util.hash_graph_simple(graph, self.config['hash_algo'])
+	        else:
+	            graph_hash = graph_util.hash_graph(graph, self.config['hash_algo'])
+
+	        interpolants.append(Graph(graph, graph_hash))
+	        
+	    if different_lengths:
+	        larger_graph = graph1 if len(graph1.graph) - 1 == larger_length else graph2
+	        larger_interpolants = []
+	        
+	        for smaller_graph in interpolants:
+	            graph = smaller_graph.graph[:-1] + larger_graph.graph[smaller_length:]
+	            
+	            if HASH_SIMPLE:
+	                graph_hash = graph_util.hash_graph_simple(graph, self.config['hash_algo'])
+	            else:
+	                graph_hash = graph_util.hash_graph(graph, self.config['hash_algo'])
+	                
+	            larger_interpolants.append(Graph(graph, graph_hash))
+	    
+	        interpolants.extend(larger_interpolants)
+
+	    return interpolants
 
 	def build_embeddings(self, embedding_size: int, 
 						 algo='GD', 
@@ -292,7 +385,7 @@ class Graph(object):
 					+ f'{pu.bcolors.OKCYAN}Labels:{pu.bcolors.ENDC}{labels}\n' for matrix, labels in self.graph])
 
 
-def generate_graphs(config, modules_per_stack=1, check_isomorphism=True, create_graphs=True):
+def generate_graphs(config, modules_per_stack=1, check_isomorphism=True, create_graphs=True, add_head=True):
 
 	# Code built upon https://github.com/google-research/nasbench/blob/
 	# master/nasbench/scripts/generate_graphs.py
@@ -394,26 +487,29 @@ def generate_graphs(config, modules_per_stack=1, check_isomorphism=True, create_
 	print(f"{pu.bcolors.HEADER}Using max {config['max_modules']} modules with " \
 		+ f"{modules_per_stack} module(s) per stack{pu.bcolors.ENDC}")
 
-	def _get_stack(lst: list, repeat: int):
-		return list(itertools.chain.from_iterable(itertools.repeat(x, repeat) for x in lst))
-
 	# Generate graphs using modules and heads
 	for stacks in range(1, config['max_modules']//modules_per_stack + 1):
 		for module_fingerprints in product(*[module_buckets.keys()
 										for _ in range(stacks)], \
 										desc=f'Generating CNNs with {stacks} stack(s)'): 
+			head_added = False
 			for head_fingerprint in head_buckets.keys():
 				if not create_graphs:
 					total_graphs += 1
+					continue
+
+				if head_added:
 					continue
 
 				modules_selected = _get_stack([module_buckets[fingerprint] for fingerprint in module_fingerprints],
 					repeat=modules_per_stack)
 				merged_modules = graph_util.generate_merged_modules(modules_selected)
 
-				# Add head
-				modules_selected.append(head_buckets[head_fingerprint])
-				merged_modules.append(head_buckets[head_fingerprint])
+				if add_head:
+					# Add head
+					modules_selected.append(head_buckets[head_fingerprint])
+					merged_modules.append(head_buckets[head_fingerprint])
+					head_added = True
 
 				if HASH_SIMPLE:
 					graph_fingerprint = graph_util.hash_graph_simple(modules_selected, config['hash_algo'])
@@ -452,3 +548,7 @@ def generate_graphs(config, modules_per_stack=1, check_isomorphism=True, create_
 			+ f'{total_graphs} graphs{pu.bcolors.ENDC}')
 
 	return graph_buckets
+
+
+def _get_stack(lst: list, repeat: int):
+	return list(itertools.chain.from_iterable(itertools.repeat(x, repeat) for x in lst))
