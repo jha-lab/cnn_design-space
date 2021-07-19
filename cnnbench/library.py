@@ -12,6 +12,7 @@ import numpy as np
 import json
 
 import itertools
+from tqdm.notebook import tqdm
 from tqdm.contrib.itertools import product
 from scipy.stats import zscore
 
@@ -64,14 +65,16 @@ class GraphLib(object):
 		return f'{pu.bcolors.HEADER}Graph Library with configurations:{pu.bcolors.ENDC}\n{self.config}' \
 			+ f'\n{pu.bcolors.HEADER}Number of graphs:{pu.bcolors.ENDC} {len(self.library)}'
 
-	def build_library(self, check_isomorphism=True):
+	def build_library(self, check_isomorphism=True, create_graphs=True):
 		"""Build the GraphLib library
 		
 		Args:
-			check_isomorphism (bool, optional): if True, isomorphism is checked 
-				for every graph. Default is False, to save compute time
+		    check_isomorphism (bool, optional): if True, isomorphism is checked 
+		    	for every graph. If False, saves compute time
+		    create_graphs (bool, optional): if True, graphs are created and added
+		   		to the library 
 		"""
-		graph_buckets = generate_graphs(self.config, check_isomorphism=check_isomorphism)
+		graph_buckets = generate_graphs(self.config, check_isomorphism=check_isomorphism, create_graphs=create_graphs)
 
 		for graph_hash, graph in graph_buckets.items():
 			self.library.append(Graph(graph, graph_hash))
@@ -286,7 +289,7 @@ class Graph(object):
 					+ f'{pu.bcolors.OKCYAN}Labels:{pu.bcolors.ENDC}{labels}\n' for matrix, labels in self.graph])
 
 
-def generate_graphs(config, check_isomorphism = True):
+def generate_graphs(config, check_isomorphism=True, create_graphs=True):
 
 	# Code built upon https://github.com/google-research/nasbench/blob/
 	# master/nasbench/scripts/generate_graphs.py
@@ -314,7 +317,7 @@ def generate_graphs(config, check_isomorphism = True):
 
 	# Generate all possible martix-label pairs (or modules)
 	for vertices in range(2 if ALLOW_2_V else 3, config['module_vertices'] + 1):
-		for bits in range(2 ** (vertices * (vertices - 1) // 2)):
+		for bits in tqdm(range(2 ** (vertices * (vertices - 1) // 2)), desc='Generating modules'):
 			# Construct adj matrix from bit string
 			matrix = np.fromfunction(graph_util.gen_is_edge_fn(bits),
 									 (vertices, vertices),
@@ -390,6 +393,10 @@ def generate_graphs(config, check_isomorphism = True):
 										for _ in range(modules)], \
 										desc=f'Generating CNNs with {modules} module(s)'): 
 			for head_fingerprint in head_buckets.keys():
+				if not create_graphs:
+					total_graphs += 1
+					continue
+
 				modules_selected = [module_buckets[fingerprint] for fingerprint in module_fingerprints]
 				merged_modules = graph_util.generate_merged_modules(modules_selected)
 
