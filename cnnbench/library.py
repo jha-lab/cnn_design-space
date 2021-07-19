@@ -65,16 +65,18 @@ class GraphLib(object):
 		return f'{pu.bcolors.HEADER}Graph Library with configurations:{pu.bcolors.ENDC}\n{self.config}' \
 			+ f'\n{pu.bcolors.HEADER}Number of graphs:{pu.bcolors.ENDC} {len(self.library)}'
 
-	def build_library(self, check_isomorphism=True, create_graphs=True):
+	def build_library(self, modules_per_stack=1, check_isomorphism=True, create_graphs=True):
 		"""Build the GraphLib library
 		
 		Args:
+			modules_per_stack: number of modules in a stack
 		    check_isomorphism (bool, optional): if True, isomorphism is checked 
 		    	for every graph. If False, saves compute time
 		    create_graphs (bool, optional): if True, graphs are created and added
 		   		to the library 
 		"""
-		graph_buckets = generate_graphs(self.config, check_isomorphism=check_isomorphism, create_graphs=create_graphs)
+		graph_buckets = generate_graphs(self.config, modules_per_stack=modules_per_stack,
+			check_isomorphism=check_isomorphism, create_graphs=create_graphs)
 
 		for graph_hash, graph in graph_buckets.items():
 			self.library.append(Graph(graph, graph_hash))
@@ -129,7 +131,8 @@ class GraphLib(object):
 		if algo == 'MDS':
 			embeddings = embedding_util.generate_mds_embeddings(diss_mat, embedding_size=embedding_size, n_jobs=n_jobs)
 		elif algo == 'GD':
-			embeddings = embedding_util.generate_grad_embeddings(diss_mat, embedding_size=embedding_size, n_jobs=n_jobs, silent=True)
+			embeddings = embedding_util.generate_grad_embeddings(diss_mat, embedding_size=embedding_size, n_jobs=n_jobs, 
+				silent=True)
 		else:
 			raise NotImplementedError(f'Embedding algorithm: {algo} is not supported')
 
@@ -289,10 +292,13 @@ class Graph(object):
 					+ f'{pu.bcolors.OKCYAN}Labels:{pu.bcolors.ENDC}{labels}\n' for matrix, labels in self.graph])
 
 
-def generate_graphs(config, check_isomorphism=True, create_graphs=True):
+def generate_graphs(config, modules_per_stack=1, check_isomorphism=True, create_graphs=True):
 
 	# Code built upon https://github.com/google-research/nasbench/blob/
 	# master/nasbench/scripts/generate_graphs.py
+	
+	assert config['max_modules'] % modules_per_stack == 0, "'max_modules' in config should be divisible by 'modules_per_stack'"
+	
 
 	total_modules = 0	# Total number of modules (including isomorphisms)
 	total_heads = 0 	# Total number of heads
@@ -346,7 +352,7 @@ def generate_graphs(config, check_isomorphism=True, create_graphs=True):
 								+ f' canonical matrix:\n{canonical_matrix[0]}\nLabels: {canonical_matrix[1]}{pu.bcolors.ENDC}')
 						sys.exit()
 
-		print(f'\t{pu.bcolors.OKGREEN}Generated up to {vertices} vertices: {len(module_buckets)} modules ' \
+		print(f'\t{pu.bcolors.OKGREEN}Generated up to {vertices} vertices: {len(module_buckets)} module(s) ' \
 			+ f'({total_modules} without hashing){pu.bcolors.ENDC}')
 
 
@@ -379,25 +385,30 @@ def generate_graphs(config, check_isomorphism=True, create_graphs=True):
 								+ f' canonical matrix:\n{canonical_matrix[0]}\nLabels: {canonical_matrix[1]}{pu.bcolors.ENDC}')
 						sys.exit()
 
-		print(f'\t{pu.bcolors.OKGREEN}Generated up to {vertices} vertices: {len(head_buckets)} heads ' \
+		print(f'\t{pu.bcolors.OKGREEN}Generated up to {vertices} vertices: {len(head_buckets)} head(s) ' \
 			+ f'({total_heads} without hashing){pu.bcolors.ENDC}')
 
 
 	print()
 	print(f'{pu.bcolors.HEADER}Generating graphs...{pu.bcolors.ENDC}')
-	print(f"{pu.bcolors.HEADER}Using max {config['max_modules']} modules{pu.bcolors.ENDC}")
+	print(f"{pu.bcolors.HEADER}Using max {config['max_modules']} modules with " \
+		+ f"{modules_per_stack} module(s) per stack{pu.bcolors.ENDC}")
+
+	def _get_stack(lst: list, repeat: int):
+		return list(itertools.chain.from_iterable(itertools.repeat(x, repeat) for x in lst))
 
 	# Generate graphs using modules and heads
-	for modules in range(1, config['max_modules'] + 1):
+	for stacks in range(1, config['max_modules']//modules_per_stack + 1):
 		for module_fingerprints in product(*[module_buckets.keys()
-										for _ in range(modules)], \
-										desc=f'Generating CNNs with {modules} module(s)'): 
+										for _ in range(stacks)], \
+										desc=f'Generating CNNs with {stacks} stack(s)'): 
 			for head_fingerprint in head_buckets.keys():
 				if not create_graphs:
 					total_graphs += 1
 					continue
 
-				modules_selected = [module_buckets[fingerprint] for fingerprint in module_fingerprints]
+				modules_selected = _get_stack([module_buckets[fingerprint] for fingerprint in module_fingerprints],
+					repeat=modules_per_stack)
 				merged_modules = graph_util.generate_merged_modules(modules_selected)
 
 				# Add head
@@ -437,6 +448,7 @@ def generate_graphs(config, check_isomorphism=True, create_graphs=True):
 
 						sys.exit()
 
-		print(f'\t{pu.bcolors.OKGREEN}Generated up to {modules} modules: {total_graphs} graphs{pu.bcolors.ENDC}')
+		print(f'\t{pu.bcolors.OKGREEN}Generated up to {stacks} stack(s) ({modules_per_stack * stacks} module(s)): '\
+			+ f'{total_graphs} graphs{pu.bcolors.ENDC}')
 
 	return graph_buckets
