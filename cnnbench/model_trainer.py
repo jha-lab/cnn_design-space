@@ -24,6 +24,7 @@ import numpy as np
 from inspect import getmembers
 from functools import partial
 from copy import deepcopy
+import argparse
 import shutil
 import hashlib
 import json
@@ -642,3 +643,52 @@ def train(config,
             scheduler.step(val_loss)
         elif schdlr != 'CosineAnnealingWarmRestarts':
             scheduler.step()
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(
+        description='Input parameters for model trainer',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument('--config_file',
+        metavar='',
+        type=str,
+        help='path to config file',
+        default='')
+    parser.add_argument('--graphlib_file',
+        metavar='',
+        type=str,
+        help='path to graphlib dataset file',
+        default='')
+    parser.add_argument('--model_dir',
+        metavar='',
+        type=str,
+        help='directory to save the dataset',
+        default='')
+    parser.add_argument('--model_hash',
+        metavar='',
+        type=str,
+        help='hash of the given model',
+        default='')
+    parser.add_argument('--autotune',
+        metavar='',
+        type=int,
+        help='to autotune the model or not',
+        default=0)
+
+    args = parser.parse_args()
+
+    graphLib = GraphLib.load_from_dataset(args.graphlib_file)
+
+    with open(args.config_file) as config_file:
+        try:
+            config = yaml.safe_load(config_file)
+        except yaml.YAMLError as exc:
+            raise exc
+
+    model_graph = graphLib.get_graph(model_hash=args.model_hash)
+
+    if args.autotune == 0:
+        auto_tune = False
+    else:
+        auto_tune = True
+
+    worker(config=config, graphObject=model_graph, model_dir=args.model_dir, auto_tune=auto_tune)
