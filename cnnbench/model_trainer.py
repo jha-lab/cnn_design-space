@@ -58,6 +58,7 @@ def worker(config: dict,
            graphObject: 'Graph', 
            device: torch.device = None, 
            model_dir: str = None, 
+           neighbor_file: str = None,
            auto_tune = False,
            ckpt_interval = 1,
            save_fig = True):
@@ -68,6 +69,7 @@ def worker(config: dict,
         graphObject (Graph): Graph object
         device (torch.device, optional): cuda device
         model_dir (str, optional): directory to store the model and metrics
+        neighbor_file (str, optional): path to the neighbor's checkpoint file
         auto_tune (bool, optional): to use ray-tune for automatic tuning of hyper-parameter,
             else defaults to the first training recipe in config
         ckpt_interval (int, optional): checkpointing interval. If "-1", only last checkpoint is
@@ -215,6 +217,7 @@ def worker(config: dict,
                 auto_tune=True,
                 checkpointing=True,
                 ckpt_interval=ckpt_interval,
+                neighbor_file=neighbor_file,
                 gpuFrac=None),
             local_dir=model_dir,
             name='auto_tune',
@@ -386,6 +389,7 @@ def train(config,
           checkpointing = True,
           ckpt_interval = 1,
           checkpoint_dir = None,
+          neighbor_file = None,
           gpuFrac = None):
     """Trains a CNN model on a given device
     
@@ -399,6 +403,7 @@ def train(config,
         checkpointing (bool, optional): to checkpoint trained models
         ckpt_interval (int, optional): checkpointing interval
         checkpoint_dir (None, optional): directory where checkpoint is stored
+        neighbor_file (str, optional): path to the neighbor checkpoint file 
         gpuFrac (float): fraction of GPU memory to be alloted for training given model
     
     Raises:
@@ -407,6 +412,13 @@ def train(config,
     print(f'{pu.bcolors.OKBLUE}Given hyper-parameters:{pu.bcolors.ENDC}\n{config}')
 
     model = CNNBenchModel(main_config, graphObject)
+
+    if neighbor_file is not None:
+        neighbor_checkpoint = torch.load(neighbor_file)
+        neighbor_model = CNNBenchModel(main_config, neighbor_checkpoint['graphObject'])
+        neighbor_model.load_state_dict(neighbor_checkpoint['model_state_dict'])
+
+        model.load_from_model(neighbor_model) 
 
     model_params = model.get_params()
 
@@ -658,6 +670,11 @@ if __name__ == '__main__':
         type=str,
         help='path to graphlib dataset file',
         default='')
+    parser.add_argument('--neighbor_file',
+        metavar='',
+        type=str,
+        help='path to chosen neighbor\'s checkpoint file',
+        default='')
     parser.add_argument('--model_dir',
         metavar='',
         type=str,
@@ -691,4 +708,8 @@ if __name__ == '__main__':
     else:
         auto_tune = True
 
-    worker(config=config, graphObject=model_graph, model_dir=args.model_dir, auto_tune=auto_tune)
+    neighbor_file = None
+    if args.neighbor_file is not None and args.neighbor_file != '':
+        neighbor_file = args.neighbor_file
+
+    worker(config=config, graphObject=model_graph, model_dir=args.model_dir, auto_tune=auto_tune, neighbor_file=neighbor_file)

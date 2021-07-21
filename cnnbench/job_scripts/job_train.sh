@@ -10,6 +10,7 @@ autotune="0"
 model_hash=""
 model_dir=""
 config_file=""
+neighbor_file=""
 dataset=""
 graphlib_file=""
 
@@ -31,6 +32,7 @@ Help()
    echo -e "${YELLOW}-m${ENDC} | ${YELLOW}--model_hash${ENDC} [default = ${GREEN}\"\"${ENDC}] \t\t Model hash"
    echo -e "${YELLOW}-d${ENDC} | ${YELLOW}--model_dir${ENDC} [default = ${GREEN}\"\"${ENDC}] \t\t Directory to save the model"
    echo -e "${YELLOW}-f${ENDC} | ${YELLOW}--config_file${ENDC} [default = ${GREEN}\"\"${ENDC}] \t\t Path to the config file"
+   echo -e "${YELLOW}-n${ENDC} | ${YELLOW}--neighbor_file${ENDC} [default = ${GREEN}\"\"${ENDC}] \t\t Path to the chosen neighbor"
    echo -e "${YELLOW}-s${ENDC} | ${YELLOW}--dataset${ENDC} [default = ${GREEN}\"\"${ENDC}] \t\t\t Dataset name"
    echo -e "${YELLOW}-g${ENDC} | ${YELLOW}--graphlib_file${ENDC} [default = ${GREEN}\"\"${ENDC}] \t\t Path to the graphlib dataset"
    echo -e "${YELLOW}-h${ENDC} | ${YELLOW}--help${ENDC} \t\t\t\t\t Call this help message"
@@ -68,6 +70,11 @@ case "$1" in
     -f | --config_file)
         shift
         config_file=$1
+        shift
+        ;;
+    -n | --neighbor_file)
+        shift
+        neighbor_file=$1
         shift
         ;;
     -s | --dataset)
@@ -130,6 +137,7 @@ echo "cd .." >> $job_file
 echo "" >> $job_file
 echo "python model_trainer.py --config_file ${config_file} \
   --graphlib_file ${graphlib_file} \
+  --neighbor_file ${neighbor_file} \
   --model_dir ${model_dir} \
   --model_hash ${model_hash} \
   --autotune ${autotune}" >> $job_file
