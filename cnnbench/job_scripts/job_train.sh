@@ -105,7 +105,7 @@ else
 	return 1
 fi
 
-job_file="./job_${model_hash}_.slurm"
+job_file="./job_${model_hash}.slurm"
 mkdir -p "./job_scripts/${dataset}/"
 
 cd "./job_scripts/${dataset}/"
@@ -116,7 +116,7 @@ echo "#SBATCH --job-name=flexibert_${dataset}_${model_hash}  # create a short na
 echo "#SBATCH --nodes=1                                      # node count" >> $job_file
 echo "#SBATCH --ntasks=1                                     # total number of tasks across all nodes" >> $job_file
 echo "#SBATCH --cpus-per-task=20                             # cpu-cores per task (>1 if multi-threaded tasks)" >> $job_file
-echo "#SBATCH --mem-per-cpu=8G                               # memory per cpu-core (4G is default)" >> $job_file
+echo "#SBATCH --mem=128G                                     # memory per cpu-core (4G is default)" >> $job_file
 echo "#SBATCH --gres=${cluster_gpu}                          # number of gpus per node" >> $job_file
 echo "#SBATCH --time=144:00:00                               # total run time limit (HH:MM:SS)" >> $job_file
 # echo "#SBATCH --mail-type=all                                # send email" >> $job_file
@@ -135,4 +135,4 @@ echo "python model_trainer.py --config_file ${config_file} \
   --autotune ${autotune}" >> $job_file
 # echo "python -c 'import time; import random; time.sleep(random.randint(50, 100))'" >> $job_file
 
-sbatch $job_file
+# sbatch $job_file
