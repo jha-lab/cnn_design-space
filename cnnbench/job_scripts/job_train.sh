@@ -119,12 +119,13 @@ cd "./job_scripts/${dataset}/"
 
 # Create SLURM job script to train surrogate model
 echo "#!/bin/bash" >> $job_file
-echo "#SBATCH --job-name=flexibert_${dataset}_${model_hash}  # create a short name for your job" >> $job_file
+echo "#SBATCH --job-name=cnnbench_${dataset}_${model_hash}   # create a short name for your job" >> $job_file
 echo "#SBATCH --nodes=1                                      # node count" >> $job_file
 echo "#SBATCH --ntasks=1                                     # total number of tasks across all nodes" >> $job_file
 echo "#SBATCH --cpus-per-task=20                             # cpu-cores per task (>1 if multi-threaded tasks)" >> $job_file
 echo "#SBATCH --mem=128G                                     # memory per cpu-core (4G is default)" >> $job_file
-echo "#SBATCH --gres=${cluster_gpu}                          # number of gpus per node" >> $job_file
+# echo "#SBATCH --gres=${cluster_gpu}                          # number of gpus per node" >> $job_file
+# echo "#SBATCH --gres=gpu:1" >> $job_file
 echo "#SBATCH --time=144:00:00                               # total run time limit (HH:MM:SS)" >> $job_file
 # echo "#SBATCH --mail-type=all                                # send email" >> $job_file
 # echo "#SBATCH --mail-user=stuli@princeton.edu" >> $job_file
@@ -133,14 +134,20 @@ echo "module purge" >> $job_file
 echo "module load anaconda3/2020.7" >> $job_file
 echo "conda activate cnnbench" >> $job_file
 echo "" >> $job_file
-echo "cd .." >> $job_file
-echo "" >> $job_file
-echo "python model_trainer.py --config_file ${config_file} \
-  --graphlib_file ${graphlib_file} \
-  --neighbor_file ${neighbor_file} \
-  --model_dir ${model_dir} \
-  --model_hash ${model_hash} \
-  --autotune ${autotune}" >> $job_file
-# echo "python -c 'import time; import random; time.sleep(random.randint(50, 100))'" >> $job_file
+echo "cd ../.." >> $job_file
+# echo "" >> $job_file
+# echo "python model_trainer.py --config_file ${config_file} \
+#   --graphlib_file ${graphlib_file} \
+#   --neighbor_file ${neighbor_file} \
+#   --model_dir ${model_dir} \
+#   --model_hash ${model_hash} \
+#   --autotune ${autotune}" >> $job_file
+echo "export MKL_SERVICE_FORCE_INTEL=1" >> $job_file
+echo "python -c \"import time, torch, random, os, numpy; \
+    os.environ['MKL_SERVICE_FORCE_INTEL'] = '1'; \
+    acc = random.random(); \
+    ckpt = {'train_accuracies': [acc], 'val_accuracies': [acc], 'test_accuracies': [acc]}; \
+    os.makedirs('${model_dir}'); \
+    torch.save(ckpt, os.path.join('${model_dir}', 'model.pt'))\"" >> $job_file
 
-# sbatch $job_file
+sbatch $job_file

@@ -11,6 +11,7 @@ sys.path.append('../boshnas/')
 
 import argparse
 import numpy as np
+import yaml
 import random
 import tabulate
 import subprocess
@@ -20,9 +21,7 @@ import json
 import torch
 
 from boshnas import BOSHNAS
-from aqn import gosh_aqn as aqn
-
-from model_builder import CNNBenchModel
+from acq import gosh_acq as acq
 
 from library import GraphLib, Graph
 from utils import print_util as pu
@@ -50,32 +49,32 @@ def worker(config_file: str,
 	"""Worker to finetune or pretrain the given model
 	
 	Args:
-	    config_file (str): path to the configuration file
-	    graphlib_file (str): path the the graphLib dataset file
-	    models_dir (str): path to "models" directory containing "pretrained" sub-directory
-	    model_hash (str): hash of the given model
-	    chosen_neighbor_hash (str): hash of the chosen neighbor
-	    autotune (bool): to autotune the given model
-	    cluster (str): name of the cluster - "adroit", "tiger" or "della"
-	    id (str): PU-NetID that is used to run slurm commands
+		config_file (str): path to the configuration file
+		graphlib_file (str): path the the graphLib dataset file
+		models_dir (str): path to "models" directory containing "pretrained" sub-directory
+		model_hash (str): hash of the given model
+		chosen_neighbor_hash (str): hash of the chosen neighbor
+		autotune (bool): to autotune the given model
+		cluster (str): name of the cluster - "adroit", "tiger" or "della"
+		id (str): PU-NetID that is used to run slurm commands
 	
 	Returns:
-	    job_id, pretrain (str, bool): Job ID for the slurm scheduler and whether pretraining
-	    is being performed
+		job_id, pretrain (str, bool): Job ID for the slurm scheduler and whether pretraining
+		is being performed
 	"""
 	scratch = False
 
-	print(f'Training model with hash: {model.hash}.')
+	print(f'Training model with hash: {model_hash}.')
 
 	graphLib = GraphLib.load_from_dataset(graphlib_file)
 
-	with open(args.config_file) as config_file:
-        try:
-            config = yaml.safe_load(config_file)
-        except yaml.YAMLError as exc:
-            raise exc
+	with open(config_file) as file:
+		try:
+			config = yaml.safe_load(file)
+		except yaml.YAMLError as exc:
+			raise exc
 
-    chosen_neighbor_path = None
+	chosen_neighbor_path = None
 	if chosen_neighbor_hash is not None:
 		# Load weights of current model using the finetuned neighbor that was chosen
 		chosen_neighbor_path = os.path.join(models_dir, chosen_neighbor_hash, 'model.pt')
@@ -89,14 +88,14 @@ def worker(config_file: str,
 	args.extend(['--id', id])
 	args.extend(['--autotune', '1' if autotune else '0'])
 	args.extend(['--model_hash', model_hash])
-	args.extend(['--models_dir', models_dir])
+	args.extend(['--model_dir', os.path.join(models_dir, model_hash)])
 	args.extend(['--config_file', config_file])
 	args.extend(['--graphlib_file', graphlib_file])
 
 	if chosen_neighbor_path is not None:
 		args.extend(['--neighbor_file', chosen_neighbor_path])
 	
-	slurm_stdout = subprocess.check_output(f'source ./job_scripts/job_train_script.sh {" ".join(args)}',
+	slurm_stdout = subprocess.check_output(f'source ./job_scripts/job_train.sh {" ".join(args)}',
 		shell=True, text=True)
 
 	return slurm_stdout.split()[-1], scratch
@@ -164,6 +163,9 @@ def wait_for_jobs(model_jobs: list, running_limit: int = 4, patience: int = 1):
 				pending_jobs += 1
 			elif status == 'RUNNING':
 				running_jobs += 1
+			elif status == 'FAILED':
+				print_jobs(model_jobs)
+				raise RuntimeError('Some jobs failed.')
 		if last_completed_jobs != completed_jobs:
 			print_jobs(model_jobs)
 		last_completed_jobs = completed_jobs 
@@ -174,9 +176,9 @@ def update_dataset(graphLib: 'GraphLib', models_dir: str, dataset_file: str):
 	"""Update the dataset with all finetuned models
 	
 	Args:
-	    graphLib (GraphLib): GraphLib opject to update
-	    models_dir (str): directory with all trained models
-	    dataset_file (str): path to the dataset file
+		graphLib (GraphLib): GraphLib opject to update
+		models_dir (str): directory with all trained models
+		dataset_file (str): path to the dataset file
 	"""
 	count = 0
 	best_accuracy = 0
@@ -194,8 +196,10 @@ def update_dataset(graphLib: 'GraphLib', models_dir: str, dataset_file: str):
 
 	graphLib.save_dataset(dataset_file)
 
-	print(f'{pu.bcolors.OKGREEN}Trained points in dataset:{pu.bcolors.ENDC} {count}' \
+	print()
+	print(f'{pu.bcolors.OKGREEN}Trained points in dataset:{pu.bcolors.ENDC} {count}\n' \
 		+ f'{pu.bcolors.OKGREEN}Best accuracy:{pu.bcolors.ENDC} {best_accuracy}')
+	print()
 
 	return best_accuracy
 
@@ -205,10 +209,10 @@ def convert_to_tabular(graphLib: 'GraphLib'):
 	input encodings to the output loss
 	
 	Args:
-	    graphLib (GraphLib): GraphLib object
+		graphLib (GraphLib): GraphLib object
 	
 	Returns:
-	    X, y (tuple): input embeddings and output loss
+		X, y (tuple): input embeddings and output loss
 	"""
 	X, y = [], []
 	for graph in graphLib.library:
@@ -222,15 +226,15 @@ def convert_to_tabular(graphLib: 'GraphLib'):
 
 
 def get_neighbor_hash(model: 'Graph', trained_hashes: list):
-    chosen_neighbor_hash = None
+	chosen_neighbor_hash = None
 
-    # Choose neighbor with max overlap given that it is trained
+	# Choose neighbor with max overlap given that it is trained
 	for neighbor_hash in model.neighbors:
 		if neighbor_hash in trained_hashes: 
 			chosen_neighbor_hash = neighbor_hash
 			break
 
-    return chosen_neighbor_hash
+	return chosen_neighbor_hash
 
 
 def main():
@@ -243,7 +247,7 @@ def main():
 		metavar='',
 		type=str,
 		help='path to load the graphlib dataset',
-		default='./dataset/dataset.json')
+		default='./dataset/dataset_test.json')
 	parser.add_argument('--dataset',
 		metavar='',
 		type=str,
@@ -258,12 +262,12 @@ def main():
 		metavar='',
 		type=str,
 		help='path to save the surrogate model parameters',
-		default='./dataset/surrogate_models/CIFAR10/')
+		default='./dataset/surrogate_models/CIFAR10')
 	parser.add_argument('--models_dir',
 		metavar='',
 		type=str,
 		help='path to the directory where all models are trained',
-		default='../results/CIFAR10/')
+		default='/home/stuli/cnn_design-space/results/CIFAR10')
 	parser.add_argument('--num_init',
 		metavar='',
 		type=int,
@@ -282,7 +286,7 @@ def main():
 	parser.add_argument('--cluster',
 		metavar='',
 		type=str,
-		help='name of the cluster - "adroit" or "tiger"',
+		help='name of the cluster - "adroit", "tiger" or "della"',
 		default='della')
 	parser.add_argument('--id',
 		metavar='',
@@ -298,11 +302,11 @@ def main():
 	graphLib = GraphLib.load_from_dataset(args.graphlib_file)
 
 	# New dataset file
-    new_dataset_file = args.dataset_file.split('.json')[0] + '_trained.json'
+	new_dataset_file = args.graphlib_file.split('.json')[0] + '_trained.json'
 
-    autotune = False
-    if args.autotune == 1:
-    	autotune = True
+	autotune = False
+	if args.autotune == 1:
+		autotune = True
 
 	# 1. Pre-train randomly sampled models if number of pretrained models available 
 	#   is less than num_init
@@ -314,7 +318,7 @@ def main():
 	# 5. With prob epsilon: train models with max std, and prob delta: train random models
 	#   - if neighbor pretrained with high overlap, finetune only; else pretrain
 	# 6. Keep a dictionary of job id and model hash. Get accuracy from trained models.
-	# 	Wait for spawning more jobs
+	#   Wait for spawning more jobs
 	# 7. Update the BOSHNAS model and put next queries in queue
 	# 8. Optional: Use aleatoric uncertainty and re-finetune models if accuracy converges
 	# 9. Stop training if a stopping criterion is reached
@@ -325,22 +329,22 @@ def main():
 	if not os.path.exists(args.models_dir):
 		os.makedirs(args.models_dir)
 
-	trained_hashes = os.listdir(models_dir)
+	trained_hashes = os.listdir(args.models_dir)
 
 	# Train randomly sampled models if total trained models is less than num_init
 	# TODO: Add skopt.sampler.Sobol points instead
 	while len(trained_hashes) < args.num_init:
-		sample_idx = random.randint(0, len(graphLib))
+		sample_idx = random.randint(0, len(graphLib)-1)
 		model_hash = graphLib.library[sample_idx].hash
 
-		if model_hash not in pretrained_hashes:
+		if model_hash not in trained_hashes:
 			trained_hashes.append(model_hash)
 
 			model, model_idx = graphLib.get_graph(model_hash=model_hash)
 
 			job_id, scratch = worker(config_file=args.config_file, graphlib_file=args.graphlib_file,
-				models_dir=args.models_dir, model_hash=model_hash, autotune=autotune, cluster=args.cluster,
-				id=args.id)
+				models_dir=args.models_dir, model_hash=model_hash, chosen_neighbor_hash=None,
+				autotune=autotune, cluster=args.cluster, id=args.id)
 			assert scratch is True
 
 			train_type = 'S' if scratch else 'WT'
@@ -401,7 +405,7 @@ def main():
 
 		new_queries = 0
 
-		if method == 'optimization'
+		if method == 'optimization':
 			print(f'{pu.bcolors.OKBLUE}Running optimization step{pu.bcolors.ENDC}')
 			# Get current tabular dataset
 			X, y = convert_to_tabular(graphLib)
@@ -432,8 +436,8 @@ def main():
 
 				chosen_neighbor_hash = get_neighbor_hash(model, trained_hashes)
 
-	            if chosen_neighbor_hash:
-	            	# Finetune model with the chosen neighbor
+				if chosen_neighbor_hash:
+					# Finetune model with the chosen neighbor
 					job_id, scratch = worker(config_file=args.config_file, graphlib_file=args.graphlib_file,
 						models_dir=args.models_dir, model_hash=model.hash, autotune=autotune, 
 						chosen_neighbor_hash=chosen_neighbor_hash, cluster=args.cluster, id=args.id)
@@ -447,30 +451,32 @@ def main():
 				train_type = 'S' if scratch else 'WT'
 				train_type += ' w/ A' if autotune else ''
 				
-				model_jobs.append({'model_hash': model_hash, 
+				model_jobs.append({'model_hash': model.hash, 
 					'job_id': job_id, 
 					'train_type': train_type})
-	  		
-	  		if new_queries == 0:
-	  			# If no queries were found where weight transfer could be used, train the highest
-	  			# predicted model from scratch
-	  			query_embeddings = [X_ds[idx, :] for idx in query_indices]
-	  			candidate_predictions = surrogate_model.predict(query_embeddings)
+			
+			if new_queries == 0:
+				# If no queries were found where weight transfer could be used, train the highest
+				# predicted model from scratch
+				query_embeddings = [X_ds[idx, :] for idx in query_indices]
+				candidate_predictions = surrogate_model.predict(query_embeddings)
 
-	  			best_prediction_index = query_indices[np.argmax(aqn([pred[0] for pred in candidate_predictions],
-	  															[pred[1][0] for pred in candidate_predictions],
-	  															explore_type='ucb'))]
+				best_prediction_index = query_indices[np.argmax(acq([pred[0] for pred in candidate_predictions],
+																[pred[1][0] for pred in candidate_predictions],
+																explore_type='ucb'))]
 
-	  			# Train model
+				model = graphLib.library[best_prediction_index]
+
+				# Train model
 				job_id, scratch = worker(config_file=args.config_file, graphlib_file=args.graphlib_file,
 					models_dir=args.models_dir, model_hash=model.hash, autotune=autotune, 
 					chosen_neighbor_hash=None, cluster=args.cluster, id=args.id)
-				assert scratch is False
+				assert scratch is True
 
 				train_type = 'S' if scratch else 'WT'
 				train_type += ' w/ A' if autotune else ''
 				
-				model_jobs.append({'model_hash': model_hash, 
+				model_jobs.append({'model_hash': model.hash, 
 					'job_id': job_id, 
 					'train_type': train_type})
 

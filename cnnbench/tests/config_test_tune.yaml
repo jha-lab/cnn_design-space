@@ -11,7 +11,7 @@ data_dir: /scratch/gpfs/stuli/pytorch_datasets/
 manual_dir: null
 
 # Directory for storing models
-models_dir: /scratch/gpfs/stuli/cnnbench_models/
+models_dir: /scratch/gpfs/stuli/cnnbench_models/CIFAR10/
 
 # Training parameters
 epochs: 200
