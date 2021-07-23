@@ -8,6 +8,8 @@ import matplotlib.pyplot as plt
 
 def save_model(model, optimizer, epoch, loss_list, path):
 	file_path = path + "/" + model.name + ".ckpt"
+	if not os.path.exists(path):
+		os.makedirs(path)
 	torch.save({
         'epoch': epoch,
         'model_state_dict': model.state_dict(),

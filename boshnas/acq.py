@@ -1,9 +1,13 @@
 import numpy as np
+import torch
 from scipy.stats import norm
 import sys
 
 # Different acquisition functions
 def gosh_acq(prediction, std, explore_type='ucb'):
+
+    prediction = torch.Tensor(prediction)
+    std = torch.Tensor(std)
 
     # Upper confidence bound (UCB) acquisition function
     if explore_type == 'ucb':
