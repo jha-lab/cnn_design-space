@@ -12,7 +12,7 @@ import numpy as np
 import json
 
 import itertools
-from tqdm.notebook import tqdm
+from tqdm import tqdm
 from tqdm.contrib.itertools import product
 from scipy.stats import zscore
 from copy import deepcopy
@@ -212,7 +212,7 @@ class GraphLib(object):
 		Raises:
 		    NotImplementedError: Description
 		"""
-		print('Building embeddings for the Graph library')
+		print(f'{pu.bcolors.HEADER}Building embeddings for the Graph library...{pu.bcolors.ENDC}')
 
 		# Create list of graphs (tuples of adjacency matrices and ops)
 		graph_list = [self.library[i].graph for i in range(len(self))]

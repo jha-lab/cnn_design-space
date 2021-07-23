@@ -9,7 +9,7 @@ from library import GraphLib, Graph
 from utils import print_util as pu
 
 
-CREATE_GRAPHS = False
+CREATE_GRAPHS = True
 
 
 def main():
@@ -48,7 +48,7 @@ def main():
         metavar='',
         type=int,
         help='number of neighbors to save for each graph',
-        default=100)
+        default=50)
     parser.add_argument('--n_jobs',
         metavar='',
         type=int,

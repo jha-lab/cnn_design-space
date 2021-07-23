@@ -13,9 +13,16 @@ import re
 from inspect import getmembers
 import torch.nn as nn
 
-from tqdm.notebook import tqdm
+from tqdm import tqdm
 from itertools import combinations
 from joblib import Parallel, delayed
+
+import scipy
+import random
+
+
+PARALLELIZE = False
+RANDOM_FRAC = 0.1 # For approximating the distance matrix
 
 
 def gen_is_edge_fn(bits):
@@ -443,10 +450,35 @@ def generate_dissimilarity_matrix(graph_list: list, config: dict, kernel='GraphE
 
     dissimilarity_matrix = np.zeros((len(graph_list), len(graph_list)))
 
-    Parallel(n_jobs=n_jobs, prefer='threads', require='sharedmem')(
-        delayed(get_ged)(i, j, dissimilarity_matrix, nx_graph_list, ops_list, ops_weights) \
-            for i, j in tqdm(list(combinations(range(len(graph_list)), 2)), desc='Generating dissimilarity matrix'))
+    idx_set = list(combinations(range(len(graph_list)), 2))
 
+    if RANDOM_FRAC < 1:
+        idx_set = random.sample(idx_set, int(len(idx_set)*RANDOM_FRAC))
+        # Adding top-right point to aid interpolation
+        idx_set.append((0, len(graph_list) - 1))
+        idx_set = list(set(idx_set))
+
+    if not PARALLELIZE:
+        for i, j in tqdm(idx_set, desc='Generating dissimilarity matrix'):
+            get_ged(i, j, dissimilarity_matrix, nx_graph_list, ops_list, ops_weights)
+    else:
+        Parallel(n_jobs=n_jobs, prefer='threads', require='sharedmem')(
+            delayed(get_ged)(i, j, dissimilarity_matrix, nx_graph_list, ops_list, ops_weights) \
+                for i, j in tqdm(idx_set, desc='Generating dissimilarity matrix'))
+
+    if RANDOM_FRAC:
+        grid_x, grid_y = np.mgrid[0:len(graph_list), 0:len(graph_list)]
+        points = idx_set
+        values = [dissimilarity_matrix[idx[0], idx[1]] for idx in idx_set]
+        points.extend((i, i) for i in range(len(graph_list)))
+        values.extend(0 for i in range(len(graph_list)))
+
+        dissimilarity_matrix = scipy.interpolate.griddata(points, values, (grid_x, grid_y), 
+            method='linear')
+
+    dissimilarity_matrix = np.triu(dissimilarity_matrix, k=1)
     dissimilarity_matrix = dissimilarity_matrix + np.transpose(dissimilarity_matrix)
+
+    assert np.isnan(dissimilarity_matrix).sum() == 0, 'Dissimilarity matrix generated has NaN values'
 
     return dissimilarity_matrix
