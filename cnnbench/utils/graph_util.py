@@ -343,7 +343,7 @@ def generate_dissimilarity_matrix(graph_list: list, config: dict, kernel='GraphE
         ops_list.extend(['dense_classes'])
 
         input_channels = config['default_channels']
-    
+
         for op in ops_list:
             if op == 'input': 
                 ops_weights.append(1)
@@ -353,13 +353,13 @@ def generate_dissimilarity_matrix(graph_list: list, config: dict, kernel='GraphE
                 kernel_size = re.search('([0-9]+)x([0-9]+)', op)
                 assert kernel_size is not None
                 kernel_size = kernel_size.group(0).split('x')
-                
+
                 output_channels = re.search('-c([0-9]+)', op)
                 output_channels = config['default_channels'] if output_channels is None \
-                    else int(channels_conv.group(0)[2:])
+                    else int(output_channels.group(0)[2:])
                 groups = re.search('-g([0-9]+)', op)
                 groups = 1 if groups is None else int(groups.group(0)[2:])
-                
+
                 # Group correction
                 while output_channels % groups != 0 or input_channels % groups != 0:
                     groups -= 1
@@ -368,12 +368,12 @@ def generate_dissimilarity_matrix(graph_list: list, config: dict, kernel='GraphE
 
                 activations = [act[0] for act in getmembers(nn.modules.activation)]
                 activations_lower = [act.lower() for act in activations]
-                    
+
                 try:
                     activation_index = activations_lower.index(non_linearity)
                 except:
                     raise ValueError('Non linearity not supported in PyTorch')
-                    
+
                 ops_weights.append((input_channels * output_channels * int(kernel_size[0]) * int(kernel_size[1]) \
                     + activation_index) // groups)
             elif 'pool' in op:
@@ -387,9 +387,9 @@ def generate_dissimilarity_matrix(graph_list: list, config: dict, kernel='GraphE
                         ops_weights.append(5)
             elif op == 'flatten':
                 ops_weights.append(1)
-            elif op == 'channel_suffle':
+            elif op.startswith('channel_suffle'):
                 ops_weights.append(5)
-            elif op == 'upsample':
+            elif op.startswith('upsample'):
                 ops_weights.append(5)
             elif op.startswith('dense'):
                 size = re.search('([0-9]+)', op)
@@ -398,12 +398,11 @@ def generate_dissimilarity_matrix(graph_list: list, config: dict, kernel='GraphE
             elif op.startswith('dropout'):
                 ops_weights.append(1)
             else:
-                print(f'Provided operation: {op} in the given configuration is not interpretable')
-                sys.exit(1)
+                raise ValueError(f'Provided operation: {op} in the given configuration is not interpretable')
 
         # Weight ops by number of parameters in millions
         op_weights = [op_w/1e6 for op_w in ops_weights] 
-                
+
         return ops_list, op_weights
         
 
