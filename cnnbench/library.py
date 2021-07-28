@@ -17,6 +17,7 @@ from tqdm.contrib.itertools import product
 from scipy.stats import zscore
 from copy import deepcopy
 
+from model_builder import CNNBenchModel
 from utils import graph_util, embedding_util, print_util as pu
 
 
@@ -80,7 +81,16 @@ class GraphLib(object):
 			check_isomorphism=check_isomorphism, create_graphs=create_graphs)
 
 		for graph_hash, graph in graph_buckets.items():
-			self.library.append(Graph(graph, graph_hash))
+			graph = Graph(graph, graph_hash)
+			try:
+				model = CNNBenchModel(self.config, graph)
+
+				# Only add graph to library if correponding CNN model works
+				self.library.append(graph)
+			except:
+				pass
+
+		self.modules_per_stack = modules_per_stack
 
 		print(f'{pu.bcolors.OKGREEN}Graph library created!{pu.bcolors.ENDC} ' \
 			+ f'\n{len(self.library)} graphs within the design space.')
@@ -416,7 +426,7 @@ def generate_graphs(config, modules_per_stack=1, check_isomorphism=True, create_
 
 	# Generate all possible martix-label pairs (or modules)
 	for vertices in range(2 if ALLOW_2_V else 3, config['module_vertices'] + 1):
-		for bits in tqdm(range(2 ** (vertices * (vertices - 1) // 2)), desc='Generating modules'):
+		for bits in tqdm(range(2 ** (vertices * (vertices - 1) // 2)), desc=f'Generating modules with {vertices} vertices'):
 			# Construct adj matrix from bit string
 			matrix = np.fromfunction(graph_util.gen_is_edge_fn(bits),
 									 (vertices, vertices),

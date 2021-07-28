@@ -22,7 +22,7 @@ import random
 
 
 PARALLELIZE = False
-RANDOM_FRAC = 0.1 # For approximating the distance matrix
+RANDOM_FRAC = 0.01 # For approximating the distance matrix
 
 
 def gen_is_edge_fn(bits):

@@ -80,11 +80,10 @@ def generate_grad_embeddings(dissimilarity_matrix, embedding_size: int, epochs: 
             self.labels = torch.zeros(self.num_pairs)
 
             count = 0
-            for i in range(len(distance_matrix)):
-                for j in range(i+1, len(distance_matrix)):
-                    self.graph_pairs[count, :] = torch.Tensor([i, j])
-                    self.labels[count] = distance_matrix[i, j]
-                    count += 1 
+            for i, j in tqdm(list(combinations(range(len(distance_matrix)), 2)), desc='Generating dataset'):
+                self.graph_pairs[count, :] = torch.Tensor([i, j])
+                self.labels[count] = distance_matrix[i, j]
+                count += 1 
 
         def __getitem__(self, pair_idx):
             return {'graph_pairs': self.graph_pairs[pair_idx, :], 

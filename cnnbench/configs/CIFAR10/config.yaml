@@ -1,34 +1,668 @@
-# Configurations for CIFAR10 dataset
+# Configurations for CIFAR10 dataset on the
+# expanded space
+
 # Author : Shikhar Tuli
 
 dataset: CIFAR10
+classes: 10
+input_channels: 3
+image_size: 224
 
 # Dataset directories
 data_dir: /scratch/gpfs/stuli/pytorch_datasets/
 manual_dir: null
 
+# Directory for storing models
+models_dir: /scratch/gpfs/stuli/cnnbench_models/CIFAR10/
+
 # Training parameters
-train_batch_size: 256
-test_batch_size: 512 
+epochs: 200
+train_batch_size: 128
+test_batch_size: 128
 
 # Architecture parameters
-module_vertices: 3
-head_vertices: 6
-max_edges: 9
-max_modules: 2
+max_edges: 11
+max_modules: 90
+module_vertices: 8
+head_vertices: 8
 base_ops:
-  - conv5x5-bn-relu
-  - conv3x3-bn-relu
-  - conv1x1-bn-relu
-  - maxpool3x3
-flatten_ops:
-  - global-avg-pool
-  - flatten
-dense_ops:
-  - dense-1024
-  - dense-4096
-  - dropout-p5
+  - channel_shuffle-g8
+  - channel_shuffle-g4 # An extra
+  - channel_shuffle-g2 # An extra
+  - channel_shuffle-g1 # An extra
+  - dropout-p1
+  - dropout-p11
+  - dropout-p2
+  - dropout-p3
   - dropout-p4
+  - dropout-p5
+  - dropout-p6
+  - dropout-p7
+  - dropout-p8
+  - dropout-p9
+  - upsample-s240
+  - upsample-s260
+  - upsample-s300
+  - upsample-s380
+  - upsample-s465
+  - upsample-s528
+  - upsample-s600
+  - upsample-s800
+  - maxpool3x3-s2
+  - maxpool3x3-s2-p1
+  - maxpool3x3 # An extra
+  - maxpool3x3-p1 # An extra
+  - maxpool5x5-s2 # An extra
+  - maxpool5x5-s2-p1 # An extra
+  - maxpool5x5
+  - maxpool5x5-p1
+  - avgpool3x3-s2-p1
+  - avgpool3x3
+  - avgpool5x5-s2-p1 # An extra
+  - avgpool5x5 # An extra
+  - global-avg-pool
+  - conv1x1-c32-dw-bn-relu # An extra
+  - conv1x1-c32-dw-bn-silu # An extra
+  - conv1x1-c96-dw-bn-relu # An extra
+  - conv1x1-c96-dw-bn-silu # An extra
+  - conv1x1-c192-dw-bn-relu # An extra
+  - conv1x1-c192-dw-bn-silu # An extra
+  - conv1x1-c384-dw-bn-relu # An extra
+  - conv1x1-c384-dw-bn-silu # An extra
+  - conv1x1-c480-dw-bn-relu # An extra
+  - conv1x1-c480-dw-bn-silu # An extra
+  - conv1x1-c576-dw-bn-relu # An extra
+  - conv1x1-c576-dw-bn-silu # An extra
+  - conv1x1-c960-dw-bn-relu # An extra
+  - conv1x1-c960-dw-bn-silu # An extra
+  - conv1x1-c1632-dw-bn-relu # An extra
+  - conv1x1-c1632-dw-bn-silu # An extra
+  - conv1x1-c3840-dw-bn-relu # An extra
+  - conv1x1-c3840-dw-bn-silu # An extra
+  - conv1x1-c8256-dw-bn-relu # An extra
+  - conv1x1-c8256-dw-bn-silu # An extra
+  - conv1x1-c32-g8-bn-relu # An extra
+  - conv1x1-c32-g8-bn-silu # An extra
+  - conv1x1-c96-g8-bn-relu 
+  - conv1x1-c96-g8-bn-silu # An extra
+  - conv1x1-c192-g8-bn-relu 
+  - conv1x1-c192-g8-bn-silu # An extra
+  - conv1x1-c384-g8-bn-relu 
+  - conv1x1-c384-g8-bn-silu # An extra
+  - conv1x1-c480-g8-bn-relu # An extra
+  - conv1x1-c480-g8-bn-silu # An extra
+  - conv1x1-c576-g8-bn-relu # An extra
+  - conv1x1-c576-g8-bn-silu # An extra
+  - conv1x1-c960-g8-bn-relu # An extra
+  - conv1x1-c960-g8-bn-silu # An extra
+  - conv1x1-c1632-g8-bn-relu # An extra
+  - conv1x1-c1632-g8-bn-silu # An extra
+  - conv1x1-c3840-g8-bn-relu # An extra
+  - conv1x1-c3840-g8-bn-silu # An extra
+  - conv1x1-c8256-g8-bn-relu # An extra
+  - conv1x1-c8256-g8-bn-silu # An extra
+  - conv1x1-c32-g4-bn-relu # An extra
+  - conv1x1-c32-g4-bn-silu # An extra
+  - conv1x1-c96-g4-bn-relu # An extra
+  - conv1x1-c96-g4-bn-silu # An extra
+  - conv1x1-c192-g4-bn-relu # An extra
+  - conv1x1-c192-g4-bn-silu # An extra
+  - conv1x1-c384-g4-bn-relu # An extra
+  - conv1x1-c384-g4-bn-silu # An extra
+  - conv1x1-c480-g4-bn-relu # An extra
+  - conv1x1-c480-g4-bn-silu # An extra
+  - conv1x1-c576-g4-bn-relu # An extra
+  - conv1x1-c576-g4-bn-silu # An extra
+  - conv1x1-c960-g4-bn-relu # An extra
+  - conv1x1-c960-g4-bn-silu # An extra
+  - conv1x1-c1632-g4-bn-relu # An extra
+  - conv1x1-c1632-g4-bn-silu # An extra
+  - conv1x1-c3840-g4-bn-relu # An extra
+  - conv1x1-c3840-g4-bn-silu # An extra
+  - conv1x1-c8256-g4-bn-relu # An extra
+  - conv1x1-c8256-g4-bn-silu # An extra
+  - conv1x1-c4-bn-silu
+  - conv1x1-c6-bn-silu
+  - conv1x1-c8-bn-silu
+  - conv1x1-c10-bn-silu
+  - conv1x1-c12-bn-silu
+  - conv1x1-c14-bn-silu
+  - conv1x1-c16-bn-relu
+  - conv1x1-c16-bn-silu
+  - conv1x1-c18-bn-silu
+  - conv1x1-c20-bn-silu
+  - conv1x1-c22-bn-silu
+  - conv1x1-c24-bn-relu
+  - conv1x1-c24-bn-silu
+  - conv1x1-c26-bn-silu
+  - conv1x1-c28-bn-silu
+  - conv1x1-c30-bn-silu
+  - conv1x1-c32-bn-relu
+  - conv1x1-c32-bn-silu
+  - conv1x1-c34-bn-silu
+  - conv1x1-c36-bn-silu
+  - conv1x1-c40-bn-silu
+  - conv1x1-c44-bn-silu
+  - conv1x1-c48-bn-relu
+  - conv1x1-c48-bn-silu
+  - conv1x1-c50-bn-silu
+  - conv1x1-c52-bn-silu
+  - conv1x1-c56-bn-silu
+  - conv1x1-c58-bn-silu
+  - conv1x1-c64-bn-relu
+  - conv1x1-c64-bn-silu
+  - conv1x1-c68-bn-silu
+  - conv1x1-c72-bn-silu
+  - conv1x1-c76-bn-silu
+  - conv1x1-c80-bn-silu
+  - conv1x1-c86-bn-silu
+  - conv1x1-c88-bn-silu
+  - conv1x1-c96-bn-relu
+  - conv1x1-c96-bn-silu
+  - conv1x1-c104-bn-relu # An extra
+  - conv1x1-c104-bn-silu
+  - conv1x1-c112-bn-relu
+  - conv1x1-c112-bn-silu
+  - conv1x1-c120-bn-relu # An extra
+  - conv1x1-c120-bn-silu
+  - conv1x1-c128-bn-relu
+  - conv1x1-c128-bn-silu
+  - conv1x1-c136-bn-relu # An extra
+  - conv1x1-c136-bn-silu
+  - conv1x1-c144-bn-relu
+  - conv1x1-c144-bn-silu
+  - conv1x1-c160-bn-relu
+  - conv1x1-c160-bn-silu
+  - conv1x1-c176-bn-relu # An extra
+  - conv1x1-c176-bn-silu
+  - conv1x1-c192-bn-relu
+  - conv1x1-c192-bn-silu
+  - conv1x1-c200-bn-silu
+  - conv1x1-c206-bn-silu
+  - conv1x1-c208-bn-silu
+  - conv1x1-c224-bn-silu
+  - conv1x1-c232-bn-silu
+  - conv1x1-c240-bn-relu
+  - conv1x1-c240-bn-silu
+  - conv1x1-c256-bn-relu
+  - conv1x1-c256-bn-silu # An extra
+  - conv1x1-c272-bn-silu
+  - conv1x1-c288-bn-relu
+  - conv1x1-c288-bn-silu
+  - conv1x1-c304-bn-silu
+  - conv1x1-c320-bn-silu
+  - conv1x1-c336-bn-relu
+  - conv1x1-c336-bn-silu
+  - conv1x1-c344-bn-silu
+  - conv1x1-c352-bn-silu
+  - conv1x1-c384-bn-relu
+  - conv1x1-c384-bn-silu
+  - conv1x1-c432-bn-relu
+  - conv1x1-c432-bn-silu
+  - conv1x1-c448-bn-relu # An extra
+  - conv1x1-c448-bn-silu
+  - conv1x1-c480-bn-relu
+  - conv1x1-c480-bn-silu
+  - conv1x1-c512-bn-relu
+  - conv1x1-c512-bn-silu
+  - conv1x1-c528-bn-relu
+  - conv1x1-c528-bn-silu
+  - conv1x1-c576-bn-relu
+  - conv1x1-c576-bn-silu
+  - conv1x1-c624-bn-relu
+  - conv1x1-c624-bn-silu
+  - conv1x1-c640-bn-silu
+  - conv1x1-c672-bn-relu
+  - conv1x1-c672-bn-silu
+  - conv1x1-c720-bn-relu
+  - conv1x1-c720-bn-silu
+  - conv1x1-c728-bn-relu
+  - conv1x1-c768-bn-relu
+  - conv1x1-c768-bn-silu
+  - conv1x1-c816-bn-relu
+  - conv1x1-c816-bn-silu
+  - conv1x1-c824-bn-silu
+  - conv1x1-c864-bn-relu
+  - conv1x1-c864-bn-silu
+  - conv1x1-c960-bn-relu
+  - conv1x1-c960-bn-silu
+  - conv1x1-c1024-bn-relu
+  - conv1x1-c1024-bn-silu # An extra
+  - conv1x1-c1056-bn-relu
+  - conv1x1-c1056-bn-silu
+  - conv1x1-c1152-bn-relu
+  - conv1x1-c1152-bn-silu
+  - conv1x1-c1200-bn-relu
+  - conv1x1-c1200-bn-silu
+  - conv1x1-c1248-bn-relu
+  - conv1x1-c1248-bn-silu
+  - conv1x1-c1280-bn-relu
+  - conv1x1-c1280-bn-silu # An extra
+  - conv1x1-c1344-bn-relu
+  - conv1x1-c1344-bn-silu
+  - conv1x1-c1376-bn-silu
+  - conv1x1-c1392-bn-relu
+  - conv1x1-c1392-bn-silu
+  - conv1x1-c1408-bn-relu
+  - conv1x1-c1408-bn-silu # An extra
+  - conv1x1-c1536-bn-relu
+  - conv1x1-c1632-bn-relu
+  - conv1x1-c1632-bn-silu
+  - conv1x1-c1792-bn-relu
+  - conv1x1-c1824-bn-relu
+  - conv1x1-c1824-bn-silu
+  - conv1x1-c1920-bn-relu
+  - conv1x1-c1920-bn-silu
+  - conv1x1-c2048-bn-relu
+  - conv1x1-c2064-bn-relu
+  - conv1x1-c2064-bn-silu
+  - conv1x1-c2112-bn-relu
+  - conv1x1-c2112-bn-silu
+  - conv1x1-c2304-bn-relu
+  - conv1x1-c2304-bn-silu
+  - conv1x1-c2560-bn-relu
+  - conv1x1-c2688-bn-relu
+  - conv1x1-c2688-bn-silu
+  - conv1x1-c2880-bn-relu
+  - conv1x1-c2880-bn-silu
+  - conv1x1-c3072-bn-relu
+  - conv1x1-c3072-bn-silu
+  - conv1x1-c3456-bn-relu
+  - conv1x1-c3456-bn-silu
+  - conv1x1-c3840-bn-relu
+  - conv1x1-c3840-bn-silu
+  - conv1x1-c4944-bn-relu
+  - conv1x1-c4944-bn-silu
+  - conv1x1-c5504-bn-relu
+  - conv1x1-c5504-bn-silu # An extra
+  - conv1x1-c8256-bn-relu
+  - conv1x1-c8256-bn-silu
+  - conv3x3-c32-dw-p1-s2-bn-relu # An extra
+  - conv3x3-c32-dw-p1-s2-bn-silu # An extra
+  - conv3x3-c32-dw-p1-bn-relu # An extra
+  - conv3x3-c32-dw-p1-bn-silu # An extra
+  - conv3x3-c32-dw-bn-relu # An extra
+  - conv3x3-c32-dw-bn-silu # An extra
+  - conv3x3-c64-dw-p1-s2-bn-relu 
+  - conv3x3-c64-dw-p1-s2-bn-silu # An extra
+  - conv3x3-c64-dw-p1-bn-relu
+  - conv3x3-c64-dw-p1-bn-silu # An extra
+  - conv3x3-c64-dw-bn-relu # An extra
+  - conv3x3-c64-dw-bn-silu # An extra
+  - conv3x3-c96-dw-p1-s2-bn-relu
+  - conv3x3-c96-dw-p1-bn-relu
+  - conv3x3-c96-dw-bn-relu # An extra
+  - conv3x3-c128-dw-p1-s2-bn-relu 
+  - conv3x3-c128-dw-p1-s2-bn-silu # An extra
+  - conv3x3-c128-dw-p1-bn-relu
+  - conv3x3-c128-dw-p1-bn-silu # An extra
+  - conv3x3-c128-dw-bn-relu # An extra
+  - conv3x3-c128-dw-bn-silu # An extra
+  - conv3x3-c192-dw-p1-s2-bn-relu
+  - conv3x3-c192-dw-p1-bn-relu
+  - conv3x3-c192-dw-bn-relu # An extra
+  - conv3x3-c256-dw-p1-s2-bn-relu 
+  - conv3x3-c256-dw-p1-s2-bn-silu # An extra
+  - conv3x3-c256-dw-p1-bn-relu
+  - conv3x3-c256-dw-p1-bn-silu # An extra
+  - conv3x3-c256-dw-bn-relu # An extra
+  - conv3x3-c256-dw-bn-silu # An extra
+  - conv3x3-c384-dw-p1-s2-bn-relu
+  - conv3x3-c384-dw-p1-bn-relu
+  - conv3x3-c384-dw-bn-relu # An extra
+  - conv3x3-c512-dw-p1-s2-bn-relu 
+  - conv3x3-c512-dw-p1-s2-bn-silu # An extra
+  - conv3x3-c512-dw-p1-bn-relu
+  - conv3x3-c512-dw-p1-bn-silu # An extra
+  - conv3x3-c512-dw-bn-relu # An extra
+  - conv3x3-c512-dw-bn-silu # An extra
+  - conv3x3-c728-dw-p1-s2-bn-relu # An extra
+  - conv3x3-c728-dw-p1-s2-bn-silu # An extra
+  - conv3x3-c728-dw-p1-bn-relu
+  - conv3x3-c728-dw-p1-bn-silu # An extra
+  - conv3x3-c728-dw-bn-relu
+  - conv3x3-c728-dw-bn-silu # An extra
+  - conv3x3-c1024-dw-p1-s2-bn-relu # An extra
+  - conv3x3-c1024-dw-p1-s2-bn-silu # An extra
+  - conv3x3-c1024-dw-p1-bn-relu
+  - conv3x3-c1024-dw-p1-bn-silu # An extra
+  - conv3x3-c1024-dw-bn-relu # An extra
+  - conv3x3-c1024-dw-bn-silu # An extra
+  - conv3x3-c1536-dw-p1-bn-relu
+  - conv3x3-c1536-dw-bn-relu # An extra
+  - conv3x3-c1536-dw-bn-silu # An extra
+  - conv3x3-c32-g8-p1-s2-bn-relu # An extra
+  - conv3x3-c32-g8-p1-s2-bn-silu # An extra
+  - conv3x3-c32-g8-p1-bn-relu # An extra
+  - conv3x3-c32-g8-p1-bn-silu # An extra
+  - conv3x3-c32-g8-bn-relu # An extra
+  - conv3x3-c32-g8-bn-silu # An extra
+  - conv3x3-c64-g8-p1-s2-bn-relu # An extra
+  - conv3x3-c64-g8-p1-s2-bn-silu # An extra
+  - conv3x3-c64-g8-p1-bn-relu # An extra
+  - conv3x3-c64-g8-p1-bn-silu # An extra
+  - conv3x3-c64-g8-bn-relu # An extra
+  - conv3x3-c64-g8-bn-silu # An extra
+  - conv3x3-c96-g8-p1-s2-bn-relu # An extra
+  - conv3x3-c96-g8-p1-bn-relu # An extra
+  - conv3x3-c96-g8-bn-relu # An extra
+  - conv3x3-c128-g8-p1-s2-bn-relu # An extra
+  - conv3x3-c128-g8-p1-s2-bn-silu # An extra
+  - conv3x3-c128-g8-p1-bn-relu # An extra
+  - conv3x3-c128-g8-p1-bn-silu # An extra
+  - conv3x3-c128-g8-bn-relu # An extra
+  - conv3x3-c128-g8-bn-silu # An extra
+  - conv3x3-c192-g8-p1-s2-bn-relu # An extra
+  - conv3x3-c192-g8-p1-bn-relu # An extra
+  - conv3x3-c192-g8-bn-relu # An extra
+  - conv3x3-c256-g8-p1-s2-bn-relu # An extra
+  - conv3x3-c256-g8-p1-s2-bn-silu # An extra
+  - conv3x3-c256-g8-p1-bn-relu # An extra
+  - conv3x3-c256-g8-p1-bn-silu # An extra
+  - conv3x3-c256-g8-bn-relu # An extra
+  - conv3x3-c256-g8-bn-silu # An extra
+  - conv3x3-c360-g8-p1-s2-bn-relu # An extra
+  - conv3x3-c360-g8-p1-s2-bn-silu # An extra
+  - conv3x3-c360-g8-p1-bn-relu # An extra
+  - conv3x3-c360-g8-p1-bn-silu
+  - conv3x3-c360-g8-bn-relu # An extra
+  - conv3x3-c360-g8-bn-silu # An extra
+  - conv3x3-c384-g8-p1-s2-bn-relu # An extra
+  - conv3x3-c384-g8-p1-bn-relu
+  - conv3x3-c384-g8-bn-relu # An extra
+  - conv3x3-c512-g8-p1-s2-bn-relu # An extra
+  - conv3x3-c512-g8-p1-s2-bn-silu # An extra
+  - conv3x3-c512-g8-p1-bn-relu # An extra
+  - conv3x3-c512-g8-p1-bn-silu # An extra
+  - conv3x3-c512-g8-bn-relu # An extra
+  - conv3x3-c512-g8-bn-silu # An extra
+  - conv3x3-c768-g8-p1-s2-bn-silu # An extra
+  - conv3x3-c768-g8-p1-bn-relu 
+  - conv3x3-c768-g8-bn-relu # An extra
+  - conv3x3-c768-g8-bn-silu # An extra
+  - conv3x3-c1024-g8-p1-s2-bn-relu # An extra
+  - conv3x3-c1024-g8-p1-s2-bn-silu # An extra
+  - conv3x3-c1024-g8-p1-bn-relu # An extra
+  - conv3x3-c1024-g8-p1-bn-silu # An extra
+  - conv3x3-c1024-g8-bn-relu # An extra
+  - conv3x3-c1024-g8-bn-silu # An extra
+  - conv3x3-c1536-g8-p1-bn-relu
+  - conv3x3-c1536-g8-bn-relu # An extra
+  - conv3x3-c1536-g8-bn-silu # An extra
+  - conv3x3-c32-g4-p1-s2-bn-relu # An extra
+  - conv3x3-c32-g4-p1-s2-bn-silu # An extra
+  - conv3x3-c32-g4-p1-bn-relu # An extra
+  - conv3x3-c32-g4-p1-bn-silu # An extra
+  - conv3x3-c32-g4-bn-relu # An extra
+  - conv3x3-c32-g4-bn-silu # An extra
+  - conv3x3-c64-g4-p1-s2-bn-relu # An extra
+  - conv3x3-c64-g4-p1-s2-bn-silu # An extra
+  - conv3x3-c64-g4-p1-bn-relu # An extra
+  - conv3x3-c64-g4-p1-bn-silu # An extra
+  - conv3x3-c64-g4-bn-relu # An extra
+  - conv3x3-c64-g4-bn-silu # An extra
+  - conv3x3-c96-g4-p1-s2-bn-relu # An extra
+  - conv3x3-c96-g4-p1-bn-relu # An extra
+  - conv3x3-c96-g4-bn-relu # An extra
+  - conv3x3-c128-g4-p1-s2-bn-relu # An extra
+  - conv3x3-c128-g4-p1-s2-bn-silu # An extra
+  - conv3x3-c128-g4-p1-bn-relu # An extra
+  - conv3x3-c128-g4-p1-bn-silu # An extra
+  - conv3x3-c128-g4-bn-relu # An extra
+  - conv3x3-c128-g4-bn-silu # An extra
+  - conv3x3-c192-g4-p1-s2-bn-relu # An extra
+  - conv3x3-c192-g4-p1-bn-relu # An extra
+  - conv3x3-c192-g4-bn-relu # An extra
+  - conv3x3-c256-g4-p1-s2-bn-relu # An extra
+  - conv3x3-c256-g4-p1-s2-bn-silu # An extra
+  - conv3x3-c256-g4-p1-bn-relu # An extra
+  - conv3x3-c256-g4-p1-bn-silu # An extra
+  - conv3x3-c256-g4-bn-relu # An extra
+  - conv3x3-c256-g4-bn-silu # An extra
+  - conv3x3-c360-g4-p1-s2-bn-relu # An extra
+  - conv3x3-c360-g4-p1-s2-bn-silu # An extra
+  - conv3x3-c360-g4-p1-bn-relu # An extra
+  - conv3x3-c360-g4-p1-bn-silu # An extra
+  - conv3x3-c360-g4-bn-relu # An extra
+  - conv3x3-c360-g4-bn-silu # An extra
+  - conv3x3-c384-g4-p1-s2-bn-relu # An extra
+  - conv3x3-c384-g4-p1-bn-relu # An extra
+  - conv3x3-c384-g4-bn-relu # An extra
+  - conv3x3-c512-g4-p1-s2-bn-relu # An extra
+  - conv3x3-c512-g4-p1-s2-bn-silu # An extra
+  - conv3x3-c512-g4-p1-bn-relu # An extra
+  - conv3x3-c512-g8-p1-bn-silu # An extra
+  - conv3x3-c512-g4-bn-relu # An extra
+  - conv3x3-c512-g4-bn-silu # An extra
+  - conv3x3-c768-g4-p1-s2-bn-silu # An extra
+  - conv3x3-c768-g4-p1-bn-relu # An extra
+  - conv3x3-c768-g4-bn-relu # An extra
+  - conv3x3-c768-g4-bn-silu # An extra
+  - conv3x3-c1024-g4-p1-s2-bn-relu # An extra
+  - conv3x3-c1024-g4-p1-s2-bn-silu # An extra
+  - conv3x3-c1024-g4-p1-bn-relu # An extra
+  - conv3x3-c1024-g4-p1-bn-silu # An extra
+  - conv3x3-c1024-g4-bn-relu # An extra
+  - conv3x3-c1024-g4-bn-silu # An extra
+  - conv3x3-c1536-g4-p1-bn-relu # An extra
+  - conv3x3-c1536-g4-bn-relu # An extra
+  - conv3x3-c1536-g4-bn-silu # An extra
+  - conv3x3-c6-bn-relu
+  - conv3x3-c6-bn-silu # An extra
+  - conv3x3-c16-bn-relu
+  - conv3x3-c16-bn-silu # An extra
+  - conv3x3-c24-p1-bn-relu
+  - conv3x3-c24-p1-bn-silu # An extra
+  - conv3x3-c24-bn-relu # An extra
+  - conv3x3-c24-bn-silu # An extra
+  - conv3x3-c32-p1-s2-bn-relu # An extra
+  - conv3x3-c32-p1-s2-bn-silu
+  - conv3x3-c32-s2-bn-relu
+  - conv3x3-c32-s2-bn-silu # An extra
+  - conv3x3-c32-p1-bn-relu # An extra
+  - conv3x3-c32-p1-bn-silu # An extra
+  - conv3x3-c32-bn-relu # An extra
+  - conv3x3-c32-bn-silu # An extra
+  - conv3x3-c40-p1-s2-bn-silu
+  - conv3x3-c40-p1-bn-relu # An extra
+  - conv3x3-c40-p1-bn-silu # An extra
+  - conv3x3-c48-p1-s2-bn-relu # An extra
+  - conv3x3-c48-p1-s2-bn-silu
+  - conv3x3-c48-s2-bn-relu # An extra
+  - conv3x3-c48-s2-bn-silu # An extra
+  - conv3x3-c48-p1-bn-relu # An extra
+  - conv3x3-c48-p1-bn-silu # An extra
+  - conv3x3-c48-bn-relu # An extra
+  - conv3x3-c48-bn-silu # An extra
+  - conv3x3-c56-p1-s2-bn-silu
+  - conv3x3-c56-p1-bn-relu # An extra
+  - conv3x3-c56-p1-bn-silu # An extra
+  - conv3x3-c64-p1-s2-bn-relu # An extra
+  - conv3x3-c64-p1-s2-bn-silu
+  - conv3x3-c64-s2-bn-relu 
+  - conv3x3-c64-s2-bn-silu # An extra
+  - conv3x3-c64-p1-bn-relu # An extra
+  - conv3x3-c64-p1-bn-silu # An extra
+  - conv3x3-c64-bn-relu 
+  - conv3x3-c64-bn-silu # An extra
+  - conv3x3-c128-p1-s2-bn-relu 
+  - conv3x3-c128-p1-s2-bn-silu # An extra
+  - conv3x3-c128-s2-bn-relu # An extra
+  - conv3x3-c128-s2-bn-silu # An extra
+  - conv3x3-c128-p1-bn-relu
+  - conv3x3-c128-p1-bn-silu # An extra
+  - conv3x3-c128-bn-relu # An extra
+  - conv3x3-c128-bn-silu # An extra
+  - conv3x3-c136-p1-s2-bn-silu
+  - conv3x3-c136-p1-bn-relu # An extra
+  - conv3x3-c136-p1-bn-silu # An extra
+  - conv3x3-c192-p1-bn-relu
+  - conv3x3-c192-p1-bn-silu # An extra
+  - conv3x3-c192-bn-relu # An extra
+  - conv3x3-c192-bn-silu # An extra
+  - conv3x3-c208-p1-bn-relu
+  - conv3x3-c224-p1-bn-relu
+  - conv3x3-c224-p1-bn-silu # An extra
+  - conv3x3-c224-bn-relu # An extra
+  - conv3x3-c224-bn-silu # An extra
+  - conv3x3-c256-p1-s2-bn-relu 
+  - conv3x3-c256-p1-s2-bn-silu # An extra
+  - conv3x3-c256-s2-bn-relu # An extra
+  - conv3x3-c256-s2-bn-silu # An extra
+  - conv3x3-c256-p1-bn-relu # An extra
+  - conv3x3-c256-p1-bn-silu # An extra
+  - conv3x3-c256-bn-relu
+  - conv3x3-c256-bn-silu # An extra
+  - conv3x3-c288-p1-bn-relu
+  - conv3x3-c288-p1-bn-silu # An extra
+  - conv3x3-c288-bn-relu # An extra
+  - conv3x3-c288-bn-silu # An extra
+  - conv3x3-c320-p1-bn-relu
+  - conv3x3-c320-p1-bn-silu # An extra
+  - conv3x3-c320-bn-relu # An extra
+  - conv3x3-c320-bn-silu # An extra
+  - conv3x3-c384-p1-bn-relu
+  - conv3x3-c384-p1-bn-silu # An extra
+  - conv3x3-c384-bn-relu # An extra
+  - conv3x3-c512-p1-s2-bn-relu
+  - conv3x3-c512-p1-s2-bn-silu # An extra
+  - conv3x3-c512-s2-bn-relu # An extra
+  - conv3x3-c512-s2-bn-silu # An extra
+  - conv3x3-c512-p1-bn-relu 
+  - conv3x3-c512-p1-bn-silu # An extra
+  - conv3x3-c512-bn-relu # An extra
+  - conv3x3-c512-bn-silu # An extra
+  - conv3x3-c768-p1-s2-bn-relu # An extra
+  - conv3x3-c768-p1-s2-bn-silu # An extra
+  - conv3x3-c768-s2-bn-relu # An extra
+  - conv3x3-c768-s2-bn-silu # An extra
+  - conv3x3-c768-p1-bn-relu # An extra
+  - conv3x3-c768-p1-bn-silu # An extra
+  - conv3x3-c768-bn-relu # An extra
+  - conv3x3-c768-bn-silu # An extra
+  - conv5x5-c32-dw-p1-s2-bn-relu # An extra
+  - conv5x5-c32-dw-p1-s2-bn-silu # An extra
+  - conv5x5-c32-dw-p1-bn-relu # An extra
+  - conv5x5-c32-dw-p1-bn-silu # An extra
+  - conv5x5-c32-dw-bn-relu # An extra
+  - conv5x5-c32-dw-bn-silu # An extra
+  - conv5x5-c64-dw-p1-s2-bn-relu # An extra
+  - conv5x5-c64-dw-p1-s2-bn-silu # An extra
+  - conv5x5-c64-dw-p1-bn-relu # An extra
+  - conv5x5-c64-dw-p1-bn-silu # An extra
+  - conv5x5-c64-dw-bn-relu # An extra
+  - conv5x5-c64-dw-bn-silu # An extra
+  - conv5x5-c128-dw-p1-s2-bn-relu # An extra
+  - conv5x5-c128-dw-p1-s2-bn-silu # An extra
+  - conv5x5-c128-dw-p1-bn-relu # An extra
+  - conv5x5-c128-dw-p1-bn-silu # An extra
+  - conv5x5-c128-dw-bn-relu # An extra
+  - conv5x5-c128-dw-bn-silu # An extra
+  - conv5x5-c256-dw-p1-s2-bn-relu # An extra
+  - conv5x5-c256-dw-p1-s2-bn-silu # An extra
+  - conv5x5-c256-dw-p1-bn-relu # An extra
+  - conv5x5-c256-dw-p1-bn-silu # An extra
+  - conv5x5-c256-dw-bn-relu # An extra
+  - conv5x5-c256-dw-bn-silu # An extra
+  - conv5x5-c32-g8-p1-s2-bn-relu # An extra
+  - conv5x5-c32-g8-p1-s2-bn-silu # An extra
+  - conv5x5-c32-g8-p1-bn-relu # An extra
+  - conv5x5-c32-g8-p1-bn-silu # An extra
+  - conv5x5-c32-g8-bn-relu # An extra
+  - conv5x5-c32-g8-bn-silu # An extra
+  - conv5x5-c64-g8-p1-s2-bn-relu # An extra
+  - conv5x5-c64-g8-p1-s2-bn-silu # An extra
+  - conv5x5-c64-g8-p1-bn-relu # An extra
+  - conv5x5-c64-g8-p1-bn-silu # An extra
+  - conv5x5-c64-g8-bn-relu # An extra
+  - conv5x5-c64-g8-bn-silu # An extra
+  - conv5x5-c128-g8-p1-s2-bn-relu # An extra
+  - conv5x5-c128-g8-p1-s2-bn-silu # An extra
+  - conv5x5-c128-g8-p1-bn-relu # An extra
+  - conv5x5-c128-g8-p1-bn-silu # An extra
+  - conv5x5-c128-g8-bn-relu # An extra
+  - conv5x5-c128-g8-bn-silu # An extra
+  - conv5x5-c256-g8-p1-s2-bn-relu # An extra
+  - conv5x5-c256-g8-p1-s2-bn-silu # An extra
+  - conv5x5-c256-g8-p1-bn-relu # An extra
+  - conv5x5-c256-g8-p1-bn-silu # An extra
+  - conv5x5-c256-g8-bn-relu # An extra
+  - conv5x5-c256-g8-bn-silu # An extra
+  - conv5x5-c32-p1-s2-bn-relu # An extra
+  - conv5x5-c32-p1-s2-bn-silu # An extra
+  - conv5x5-c32-p1-bn-relu # An extra
+  - conv5x5-c32-p1-bn-silu # An extra
+  - conv5x5-c32-s2-bn-relu # An extra
+  - conv5x5-c32-s2-bn-silu # An extra
+  - conv5x5-c32-bn-relu # An extra
+  - conv5x5-c32-bn-silu # An extra
+  - conv5x5-c48-p1-s2-bn-relu # An extra
+  - conv5x5-c48-p1-s2-bn-silu # An extra
+  - conv5x5-c48-p1-bn-relu 
+  - conv5x5-c48-p1-bn-silu # An extra
+  - conv5x5-c48-s2-bn-relu # An extra
+  - conv5x5-c48-s2-bn-silu # An extra
+  - conv5x5-c48-bn-relu # An extra
+  - conv5x5-c48-bn-silu # An extra
+  - conv5x5-c64-p1-s2-bn-relu # An extra
+  - conv5x5-c64-p1-s2-bn-silu # An extra
+  - conv5x5-c64-p1-bn-relu 
+  - conv5x5-c64-p1-bn-silu # An extra
+  - conv5x5-c64-s2-bn-relu # An extra
+  - conv5x5-c64-s2-bn-silu # An extra
+  - conv5x5-c64-bn-relu # An extra
+  - conv5x5-c64-bn-silu # An extra
+  - conv5x5-c96-p1-bn-relu
+  - conv5x5-c96-p1-bn-silu # An extra
+  - conv5x5-c128-p1-s2-bn-relu # An extra
+  - conv5x5-c128-p1-s2-bn-silu # An extra
+  - conv5x5-c128-p1-bn-relu 
+  - conv5x5-c128-p1-bn-silu # An extra
+  - conv5x5-c128-s2-bn-relu # An extra
+  - conv5x5-c128-s2-bn-silu # An extra
+  - conv5x5-c128-bn-relu # An extra
+  - conv5x5-c128-bn-silu # An extra
+  - conv5x5-c192-p1-s2-bn-relu # An extra
+  - conv5x5-c192-p1-s2-bn-silu # An extra
+  - conv5x5-c192-p2-bn-relu
+  - conv5x5-c192-p2-bn-silu # An extra
+  - conv5x5-c192-p1-bn-relu # An extra
+  - conv5x5-c192-p1-bn-silu # An extra
+  - conv5x5-c192-s2-bn-relu # An extra
+  - conv5x5-c192-s2-bn-silu # An extra
+  - conv5x5-c192-bn-relu # An extra
+  - conv5x5-c192-bn-silu # An extra
+  - conv7x7-c64-p2-s2-bn-relu # An extra
+  - conv7x7-c64-p2-s2-bn-silu # An extra
+  - conv7x7-c64-p3-s2-bn-relu
+  - conv7x7-c64-p3-s2-bn-silu # An extra
+  - conv7x7-c128-p2-s2-bn-relu # An extra
+  - conv7x7-c128-p2-s2-bn-silu # An extra
+  - conv7x7-c128-p3-s2-bn-relu # An extra
+  - conv7x7-c128-p3-s2-bn-silu # An extra
+  - conv11x11-c64-p2-s4-bn-relu
+  - conv11x11-c64-p2-s4-bn-silu # An extra
+  - conv11x11-c64-p3-s4-bn-relu # An extra
+  - conv11x11-c64-p3-s4-bn-silu # An extra
+  - conv11x11-c64-p3-s2-bn-relu # An extra
+  - conv11x11-c64-p3-s2-bn-silu # An extra
+default_channels: 128
+default_stride: 1
+flatten_ops:
+  - flatten
+  - global-avg-pool
+dense_ops:
+  - dropout-p11
+  - dropout-p2
+  - dropout-p3
+  - dropout-p4
+  - dropout-p5
+  - dropout-p6
+  - dropout-p7
+  - dense-84-relu
+  - dense-120-relu
+  - dense-1024-relu
+  - dense-4096-relu
 
 # Hash algorithm, one in [md5, sha256, sha512]
 hash_algo: sha256

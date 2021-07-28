@@ -19,11 +19,13 @@ def main():
     parser.add_argument('--config_file',
         metavar='', 
         type=str, 
-        help='path to yaml file for the design space')
+        help='path to yaml file for the design space',
+        default='./configs/CIFAR10/config.yaml')
     parser.add_argument('--dataset_file',
         metavar='',
         type=str,
-        help='path to store the dataset')
+        help='path to store the dataset',
+        default='./dataset/dataset.json')
     parser.add_argument('--kernel',
         metavar='',
         type=str,
@@ -32,7 +34,7 @@ def main():
     parser.add_argument('--modules_per_stack',
         metavar='',
         type=int,
-        help='number of layers per stack',
+        help='number of modules per stack',
         default=3)
     parser.add_argument('--algo',
         metavar='',
@@ -48,7 +50,7 @@ def main():
         metavar='',
         type=int,
         help='number of neighbors to save for each graph',
-        default=50)
+        default=100)
     parser.add_argument('--n_jobs',
         metavar='',
         type=int,

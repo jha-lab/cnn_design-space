@@ -15,7 +15,7 @@ from inspect import getmembers
 import numpy as np
 import functools
 
-from library import GraphLib, Graph
+import library
 from utils import print_util as pu
 
 
@@ -23,7 +23,7 @@ CHANNEL_AXIS = 1
 
 
 class CNNBenchModel(nn.Module):
-	def __init__(self, config: dict, graphObject: Graph):
+	def __init__(self, config: dict, graphObject: 'Graph'):
 		"""Initialize the model
 		
 		Args:
