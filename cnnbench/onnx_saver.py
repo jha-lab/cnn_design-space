@@ -10,12 +10,13 @@ import torch
 from torch.autograd import Variable
 
 import argparse
+import numpy as np
 
 from model_builder import CNNBenchModel
 from manual_models import *
 from library import Graph, GraphLib
 
-from utils import print_util as pu
+from utils import graph_util, print_util as pu
 
 
 def save_onnx(ckpt_path: str, config: dict = None, model_name: str = None, onnx_file_path: str = None):
@@ -52,6 +53,39 @@ def save_onnx(ckpt_path: str, config: dict = None, model_name: str = None, onnx_
     	torch.onnx.export(model, dummy_input, onnx_file_path)
 
     print(f'{pu.bcolors.OKGREEN}Saved ONNX model to:{pu.bcolors.ENDC} {onnx_file_path}')
+
+
+def save_exhaustive_model(config: dict, onnx_file_path: str):
+    """Saves an exhaustive model which spans all basic operations in the design space
+    as per the given configuration
+    
+    Args:
+        config (dict): config dictionary
+        onnx_file_path (str): path to save the onnx file
+    """
+    conv_ops = ['upsample-s240', 'conv1x1-c32-bn-relu', 'conv3x3-c32-dw-bn-relu', \
+    	'channel_shuffle-g8', 'conv3x3-c32-g8-bn-silu', 'dropout-p1']
+
+    conv_module = (np.eye(len(conv_ops) + 2, k=1, dtype=np.int8),
+    	['input'] + conv_ops + ['output'])
+
+    for flatten_op in config['flatten_ops']:
+	    head_module = (np.eye(len(config['dense_ops']) + 3, k=1, dtype=np.int8),
+	    	['input'] + [flatten_op] + config['dense_ops'] + ['output'])
+
+	    model_graph = [conv_module, head_module]
+
+	    graphObject = Graph(model_graph, graph_util.hash_graph(model_graph, config['hash_algo']))
+
+	    model = CNNBenchModel(config, graphObject)
+
+	    torch.save(model, onnx_file_path.split('.')[0] + '_' + flatten_op + '.pt')
+
+	    dummy_input = Variable(torch.rand(1, config['input_channels'], config['image_size'], config['image_size']))
+
+	    # Gives errors with upsample and channel_shuffle_size
+	    # torch.onnx.export(model, dummy_input, onnx_file_path.split('.')[0] + '_' + flatten_op + '.onnx',
+	    # 	use_external_data_format=True)
 
 
 if __name__ == '__main__':
