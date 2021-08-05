@@ -16,6 +16,7 @@ from tqdm import tqdm
 from tqdm.contrib.itertools import product
 from scipy.stats import zscore
 from copy import deepcopy
+from six.moves import cPickle as pickle
 
 from model_builder import CNNBenchModel
 from utils import graph_util, embedding_util, print_util as pu
@@ -23,6 +24,8 @@ from utils import graph_util, embedding_util, print_util as pu
 
 HASH_SIMPLE = True
 ALLOW_2_V = False
+
+CKPT_TEMP = '/scratch/gpfs/stuli/graphs_ckpt_temp.pkl'
 
 
 class GraphLib(object):
@@ -401,7 +404,6 @@ def generate_graphs(config, modules_per_stack=1, check_isomorphism=True, create_
 	# master/nasbench/scripts/generate_graphs.py
 	
 	assert config['max_modules'] % modules_per_stack == 0, "'max_modules' in config should be divisible by 'modules_per_stack'"
-	
 
 	total_modules = 0	# Total number of modules (including isomorphisms)
 	total_heads = 0 	# Total number of heads
@@ -411,6 +413,28 @@ def generate_graphs(config, modules_per_stack=1, check_isomorphism=True, create_
 	module_buckets = {}
 	head_buckets = {}
 	graph_buckets = {}
+
+	if os.path.exists(CKPT_TEMP):
+		ckpt = pickle.load(open(CKPT_TEMP, 'rb'))
+		total_modules = ckpt['total_modules']
+		total_heads = ckpt['total_heads']
+		total_graphs = ckpt['total_graphs']
+		module_vertices_done = ckpt['module_vertices_done']
+		head_vertices_done = ckpt['head_vertices_done']
+		stacks_done = ckpt['stacks_done']
+		module_buckets = ckpt['module_buckets']
+		head_buckets = ckpt['head_buckets']
+		graph_buckets = ckpt['graph_buckets']
+
+		print(f'{pu.bcolors.OKGREEN}Loaded checkpoint with:{pu.bcolors.ENDC}' \
+			+ f'\n\t{len(module_buckets)} modules, {len(head_buckets)} heads and {len(graph_buckets)} graphs' \
+			+ f'\n\t{module_vertices_done} module vertices, {head_vertices_done} head vertices and {stacks_done} stacks are done\n')
+	else:
+		module_vertices_done, head_vertices_done, stacks_done = 0, 0, 0
+		pickle.dump({'total_modules': total_modules, 'total_heads': total_heads, 'total_graphs': total_graphs,
+			'module_vertices_done': module_vertices_done, 'head_vertices_done': head_vertices_done, 'stacks_done': stacks_done,
+			'module_buckets': module_buckets, 'head_buckets': head_buckets, 'graph_buckets': graph_buckets},
+			open(CKPT_TEMP, 'wb+'), pickle.HIGHEST_PROTOCOL)
 
 	if not ALLOW_2_V and config['module_vertices'] < 3: 
 		print(f'{pu.bcolors.FAIL}Check config file. "module_vertices" should be 3 or greater{pu.bcolors.ENDC}')
@@ -426,6 +450,7 @@ def generate_graphs(config, modules_per_stack=1, check_isomorphism=True, create_
 
 	# Generate all possible martix-label pairs (or modules)
 	for vertices in range(2 if ALLOW_2_V else 3, config['module_vertices'] + 1):
+		if vertices <= module_vertices_done: continue
 		for bits in tqdm(range(2 ** (vertices * (vertices - 1) // 2)), desc=f'Generating modules with {vertices} vertices'):
 			# Construct adj matrix from bit string
 			matrix = np.fromfunction(graph_util.gen_is_edge_fn(bits),
@@ -458,6 +483,12 @@ def generate_graphs(config, modules_per_stack=1, check_isomorphism=True, create_
 		print(f'\t{pu.bcolors.OKGREEN}Generated up to {vertices} vertices: {len(module_buckets)} module(s) ' \
 			+ f'({total_modules} without hashing){pu.bcolors.ENDC}')
 
+		module_vertices_done = vertices
+		pickle.dump({'total_modules': total_modules, 'total_heads': total_heads, 'total_graphs': total_graphs,
+			'module_vertices_done': module_vertices_done, 'head_vertices_done': head_vertices_done, 'stacks_done': stacks_done,
+			'module_buckets': module_buckets, 'head_buckets': head_buckets, 'graph_buckets': graph_buckets},
+			open(CKPT_TEMP, 'wb+'), pickle.HIGHEST_PROTOCOL)
+
 
 	print()
 	print(f'{pu.bcolors.HEADER}Generating heads...{pu.bcolors.ENDC}')
@@ -465,6 +496,7 @@ def generate_graphs(config, modules_per_stack=1, check_isomorphism=True, create_
 		+ f"{len(config['flatten_ops']) + len(config['dense_ops'])} labels{pu.bcolors.ENDC}")
 
 	for vertices in range(4, config['head_vertices'] + 1):
+		if vertices <= head_vertices_done: continue
 		for flatten_label in config['flatten_ops']:
 			for dense_labels in itertools.product(*[list(config['dense_ops']) 
 													for _ in range(vertices - 4)]):
@@ -491,6 +523,12 @@ def generate_graphs(config, modules_per_stack=1, check_isomorphism=True, create_
 		print(f'\t{pu.bcolors.OKGREEN}Generated up to {vertices} vertices: {len(head_buckets)} head(s) ' \
 			+ f'({total_heads} without hashing){pu.bcolors.ENDC}')
 
+		head_vertices_done = vertices
+		pickle.dump({'total_modules': total_modules, 'total_heads': total_heads, 'total_graphs': total_graphs,
+			'module_vertices_done': module_vertices_done, 'head_vertices_done': head_vertices_done, 'stacks_done': stacks_done,
+			'module_buckets': module_buckets, 'head_buckets': head_buckets, 'graph_buckets': graph_buckets},
+			open(CKPT_TEMP, 'wb+'), pickle.HIGHEST_PROTOCOL)
+
 
 	print()
 	print(f'{pu.bcolors.HEADER}Generating graphs...{pu.bcolors.ENDC}')
@@ -499,6 +537,7 @@ def generate_graphs(config, modules_per_stack=1, check_isomorphism=True, create_
 
 	# Generate graphs using modules and heads
 	for stacks in range(1, config['max_modules']//modules_per_stack + 1):
+		if stacks <= stacks_done: continue
 		for module_fingerprints in product(*[module_buckets.keys()
 										for _ in range(stacks)], \
 										desc=f'Generating CNNs with {stacks} stack(s)'): 
@@ -556,6 +595,13 @@ def generate_graphs(config, modules_per_stack=1, check_isomorphism=True, create_
 
 		print(f'\t{pu.bcolors.OKGREEN}Generated up to {stacks} stack(s) ({modules_per_stack * stacks} module(s)): '\
 			+ f'{total_graphs} graphs{pu.bcolors.ENDC}')
+
+		stacks_done = stacks
+		pickle.dump({'total_modules': total_modules, 'total_heads': total_heads, 'total_graphs': total_graphs,
+			'module_vertices_done': module_vertices_done, 'head_vertices_done': head_vertices_done, 'stacks_done': stacks_done,
+			'module_buckets': module_buckets, 'head_buckets': head_buckets, 'graph_buckets': graph_buckets},
+			open(CKPT_TEMP, 'wb+'), pickle.HIGHEST_PROTOCOL)
+
 
 	return graph_buckets
 
