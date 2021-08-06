@@ -47,11 +47,11 @@ def get_manual_graph(config: dict, model_name: str):
 	assert model_name in SUPPORTED_MODELS, f'The model: {model_name} is not implemented yet.'
 
 	if model_name == 'lenet':
-		conv_module = (np.eye(5, k=1, dtype=np.int8),
-			['input', 'conv3x3-c6-bn-relu', 'conv3x3-c16-bn-relu', 'avgpool3x3', 'output'])
+		conv_module = (np.eye(7, k=1, dtype=np.int8),
+			['input', 'conv5x5-c6-bn-relu', 'avgpool2x2', 'conv5x5-c16-bn-relu', 'avgpool2x2', 'conv5x5-c120-bn-relu', 'output'])
 
-		head_module = (np.eye(6, k=1, dtype=np.int8),
-			['input', 'flatten', 'dense-120-relu', 'dense-84-relu', 'dense_classes', 'output'])
+		head_module = (np.eye(5, k=1, dtype=np.int8),
+			['input', 'flatten', 'dense-84-relu', 'dense_classes', 'output'])
 
 		model_graph = [conv_module, head_module]
 
