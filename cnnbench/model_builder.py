@@ -66,7 +66,7 @@ class CNNBenchModel(nn.Module):
 					self.eval()
 					for j in range(len(self.graphObject.graph) - 1):
 						matrix_conv, labels_conv = self.graphObject.graph[j]
-						x = self.run_module(input=x, module_idx=j, matrix=matrix_conv, labels=labels_conv)
+						x, _ = self.run_module(input=x, module_idx=j, matrix=matrix_conv, labels=labels_conv)
 					input_to_head = torch.flatten(x, start_dim=1)
 					input_channels = input_to_head.shape[1]
 				for v in range(2, num_vertices - 1):
@@ -84,7 +84,7 @@ class CNNBenchModel(nn.Module):
 		for i in range(len(self.graphObject.graph)):
 			matrix, labels = self.graphObject.graph[i]
 			if i != len(self.graphObject.graph) - 1:
-				x = self.run_module(input=x, module_idx=i, matrix=matrix, labels=labels)
+				x, _ = self.run_module(input=x, module_idx=i, matrix=matrix, labels=labels)
 			else:
 				x = self.run_head(input=x, module_idx=i, matrix=matrix, labels=labels)
 
@@ -99,6 +99,18 @@ class CNNBenchModel(nn.Module):
 			total_params += num_params
 
 		return total_params
+
+	def get_tensor_shapes(self):
+		"""Get the tensor shapes throughout the model"""
+		tensor_shapes = []
+		x = torch.rand(1, self.config['input_channels'], self.config['image_size'], self.config['image_size'])
+		self.eval()
+		for i in range(len(self.graphObject.graph) - 1):
+			matrix_conv, labels_conv = self.graphObject.graph[i]
+			x, tensors = self.run_module(input=x, module_idx=i, matrix=matrix_conv, labels=labels_conv)
+			tensor_shapes.append([tuple(tensor.shape) for tensor in tensors])
+
+		return tensor_shapes
 
 	def load_from_model(self, model: 'CNNBenchModel', method='biased'):
 		"""Load model weights from another CNNBenchModel that is a neighbor of
@@ -212,7 +224,9 @@ class CNNBenchModel(nn.Module):
 				output = torch.sum(torch.stack([output, F.interpolate(getattr(self, f'proj_m{module_idx}')(tensors[0]),
 							size=(output.shape[2], output.shape[3]))], dim=0), dim=0)
 
-		return output
+		tensors.append(output)
+
+		return output, tensors
 
 	def run_head(self, input, module_idx, matrix, labels):
 		"""Build the final head."""
