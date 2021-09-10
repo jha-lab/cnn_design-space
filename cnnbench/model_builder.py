@@ -32,6 +32,7 @@ class CNNBenchModel(nn.Module):
 		super().__init__()
 		self.config = config
 		self.graphObject = graphObject
+		self.ops = []
 
 		for i in range(len(self.graphObject.graph)):
 			if i == 0:
@@ -66,7 +67,7 @@ class CNNBenchModel(nn.Module):
 					self.eval()
 					for j in range(len(self.graphObject.graph) - 1):
 						matrix_conv, labels_conv = self.graphObject.graph[j]
-						x, _ = self.run_module(input=x, module_idx=j, matrix=matrix_conv, labels=labels_conv)
+						x, _, _ = self.run_module(input=x, module_idx=j, matrix=matrix_conv, labels=labels_conv)
 					input_to_head = torch.flatten(x, start_dim=1)
 					input_channels = input_to_head.shape[1]
 				for v in range(2, num_vertices - 1):
@@ -84,11 +85,25 @@ class CNNBenchModel(nn.Module):
 		for i in range(len(self.graphObject.graph)):
 			matrix, labels = self.graphObject.graph[i]
 			if i != len(self.graphObject.graph) - 1:
-				x, _ = self.run_module(input=x, module_idx=i, matrix=matrix, labels=labels)
+				x, _, _ = self.run_module(input=x, module_idx=i, matrix=matrix, labels=labels)
 			else:
-				x = self.run_head(input=x, module_idx=i, matrix=matrix, labels=labels)
+				x, _, _ = self.run_head(input=x, module_idx=i, matrix=matrix, labels=labels)
 
 		return x
+
+	def get_operations(self):
+		"""Get all operations used in the model"""
+		x = torch.rand(1, self.config['input_channels'], self.config['image_size'], self.config['image_size'])
+		for i in range(len(self.graphObject.graph)):
+			matrix, labels = self.graphObject.graph[i]
+			if i != len(self.graphObject.graph) - 1:
+				x, _, module_ops = self.run_module(input=x, module_idx=i, matrix=matrix, labels=labels)
+				self.ops.extend(module_ops)
+			else:
+				x, _, head_ops = self.run_head(input=x, module_idx=i, matrix=matrix, labels=labels)
+				self.ops.extend(head_ops)
+
+		return self.ops
 
 	def get_params(self):
 		"""Get total number of trainable parameters of the model."""
@@ -102,15 +117,19 @@ class CNNBenchModel(nn.Module):
 
 	def get_tensor_shapes(self):
 		"""Get the tensor shapes throughout the model"""
-		tensor_shapes = []
+		conv_shapes, head_shapes = [], []
 		x = torch.rand(1, self.config['input_channels'], self.config['image_size'], self.config['image_size'])
 		self.eval()
-		for i in range(len(self.graphObject.graph) - 1):
-			matrix_conv, labels_conv = self.graphObject.graph[i]
-			x, tensors = self.run_module(input=x, module_idx=i, matrix=matrix_conv, labels=labels_conv)
-			tensor_shapes.append([tuple(tensor.shape) for tensor in tensors])
+		for i in range(len(self.graphObject.graph)):
+			matrix, labels = self.graphObject.graph[i]
+			if i != len(self.graphObject.graph) - 1:
+				x, tensors, _ = self.run_module(input=x, module_idx=i, matrix=matrix, labels=labels)
+				conv_shapes.append([tuple(tensor.shape) for tensor in tensors])
+			else:
+				x, tensors, _ = self.run_head(input=x, module_idx=i, matrix=matrix, labels=labels)
+				head_shapes.append([tuple(tensor.shape) for tensor in tensors])
 
-		return tensor_shapes
+		return conv_shapes, head_shapes
 
 	def load_from_model(self, model: 'CNNBenchModel', method='biased'):
 		"""Load model weights from another CNNBenchModel that is a neighbor of
@@ -172,11 +191,14 @@ class CNNBenchModel(nn.Module):
 			labels: base_ops for the given module
 
 		Returns:
-			output tensor from built module.
+			output: output tensor from built module
+			tensors: tensor shapes for operations in the module
+			ops: operations in the module
 		"""
 		num_vertices = np.shape(matrix)[0]
 		tensors = [input]
 	 
+		ops = [] # placeholder for operations used in the module
 		final_concat_in = []
 		for v in range(1, num_vertices - 1):
 			# Create interior connections; since channels have been corrected for,
@@ -187,6 +209,19 @@ class CNNBenchModel(nn.Module):
 				vertex_input = tensors[0]
 			elif len(add_in) > 0 and matrix[0, v]:
 				add_in.append(getattr(self, f'proj_m{module_idx}_v{v}')(tensors[0]))
+
+				# Add projection to ops
+				op_lst = [str(module) for module in getattr(self, f'proj_m{module_idx}_v{v}').modules() \
+					if not isinstance(module, nn.Sequential)] # parse nn modules into strings and keep them in op_lst
+				for item in op_lst:
+					item = re.split('[, =()]', item) # split the string and return a list
+					item = [x for x in item if x]    # get rid of "" string
+					item.insert(1, 'proj_m')
+					item.insert(2, module_idx)
+					item.insert(3, '_v')
+					item.insert(4, v)
+					ops.append(item)
+
 				max_size = max([tensor.shape[2] for tensor in add_in])
 				for i in range(len(add_in)):
 					add_in[i] = F.interpolate(add_in[i], size=(max_size, max_size))
@@ -201,6 +236,18 @@ class CNNBenchModel(nn.Module):
 
 			vertex_value = getattr(self, f'op_m{module_idx}_v{v}')(vertex_input)
 
+			# Add operation to ops
+			op_lst = [str(module) for module in getattr(self, f'op_m{module_idx}_v{v}').modules() \
+				if not isinstance(module, nn.Sequential)]
+			for item in op_lst:
+				item = re.split('[, =()]', item)
+				item = [x for x in item if x]
+				item.insert(1, 'op_m')
+				item.insert(2, module_idx)
+				item.insert(3, '_v')
+				item.insert(4, v)
+				ops.append(item)
+
 			tensors.append(vertex_value)
 
 			if matrix[v, num_vertices - 1]:
@@ -211,6 +258,18 @@ class CNNBenchModel(nn.Module):
 			# No interior vertices, input directly connected to output
 			assert matrix[0, num_vertices - 1]
 			output = getattr(self, f'proj_m{module_idx}')(tensors[0])
+
+			op_lst = [str(module) for module in getattr(self, f'proj_m{module_idx}').modules() \
+				if not isinstance(module, nn.Sequential)]
+			for item in op_lst:
+				item = re.split('[, =()]', item)
+				item = [x for x in item if x]
+				item.insert(1, 'proj_m')
+				item.insert(2, module_idx)
+				item.insert(3, '')
+				item.insert(4, '')
+				ops.append(item)
+
 		else:
 			if len(final_concat_in) == 1:
 				output = final_concat_in[0]
@@ -224,27 +283,60 @@ class CNNBenchModel(nn.Module):
 				output = torch.sum(torch.stack([output, F.interpolate(getattr(self, f'proj_m{module_idx}')(tensors[0]),
 							size=(output.shape[2], output.shape[3]))], dim=0), dim=0)
 
+				op_lst = [str(module) for module in getattr(self, f'proj_m{module_idx}').modules() \
+					if not isinstance(module, nn.Sequential)]
+				for item in op_lst:
+					item = re.split('[, =()]', item)
+					item = [x for x in item if x]
+					item.insert(1, 'proj_m')
+					item.insert(2, module_idx)
+					item.insert(3, '')
+					item.insert(4, '')
+					ops.append(item)
+
 		tensors.append(output)
 
-		return output, tensors
+		return output, tensors, ops
 
 	def run_head(self, input, module_idx, matrix, labels):
-		"""Build the final head."""
+		"""Build the final head. Documentation similar to run_module()"""
 		num_vertices = np.shape(matrix)[0]
 
+		heads = [input]
+		ops = [] # placeholder for operations used in the model's head
 		for v in range(1, num_vertices - 1):
 			if v == 1:
 				op = labels[v]
 				if op.startswith('global-avg-pool'):
+					n, c, h, w = input.size()
+					ops.append(['GlobalAvgPool', str(n), str(c), str(h), str(w)])
+
 					input = torch.mean(input, dim=[2, 3])
+					heads.append(input)
 				elif op.startswith('flatten'):
+					n, c, h, w = input.size()
+					ops.append(['Flatten', str(n), str(c), str(h), str(w)])
+
 					input = torch.flatten(input, start_dim=1)
+					heads.append(input)
 				else:
 					raise ValueError(f'Operation {op} in "flatten_ops" not supported')
 			else:
 				input = getattr(self, f'op_m{module_idx}_v{v}')(input)
+				heads.append(input)
 
-		return input
+				op_lst = [str(module) for module in getattr(self, f'op_m{module_idx}_v{v}').modules() \
+					if not isinstance(module, nn.Sequential)]
+				for item in op_lst:
+					item = re.split('[, =()]', item)
+					item = [x for x in item if x]
+					item.insert(1, 'h_op_m')
+					item.insert(2, module_idx)
+					item.insert(3, '_v')
+					item.insert(4, v)
+					ops.append(item)
+
+		return input, heads, ops
 
 	def get_op_layer(self, input_channels, op, channels: int = None):
 		"""Get the torch.nn output corresponding to the given operation."""
