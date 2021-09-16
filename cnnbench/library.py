@@ -442,11 +442,17 @@ def generate_graphs(config, modules_per_stack=1, check_isomorphism=True, create_
 
 	if config['head_vertices'] < 4:
 		print(f'{pu.bcolors.FAIL}Check config file. "head_vertices" should be 4 or greater{pu.bcolors.ENDC}')
-		sys.exit()		
+		sys.exit()	
+
+	if isinstance(config['max_edges'], int):
+		max_edges = config['max_edges'] 
+		extra_edges = 0
+	else:
+		max_edges = 0
+		extra_edges = int(config['max_edges'].split('+')[-1])
 
 	print(f'{pu.bcolors.HEADER}Generating modules...{pu.bcolors.ENDC}')
-	print(f"{pu.bcolors.HEADER}Using {config['module_vertices']} vertices, {len(config['base_ops'])} labels, " \
-		+ f"max {config['max_edges']} edges{pu.bcolors.ENDC}")
+	print(f"{pu.bcolors.HEADER}Using {config['module_vertices']} vertices and {len(config['base_ops'])} labels{pu.bcolors.ENDC}")
 
 	# Generate all possible martix-label pairs (or modules)
 	for vertices in range(2 if ALLOW_2_V else 3, config['module_vertices'] + 1):
@@ -458,8 +464,12 @@ def generate_graphs(config, modules_per_stack=1, check_isomorphism=True, create_
 									 dtype=np.int8)
 
 			# Discard any modules which can be pruned or exceed constraints
+			if max_edges == 0:
+				edges_limit = vertices + extra_edges
+			else:
+				edges_limit = max_edges 
 			if (not graph_util.is_full_dag(matrix) or
-					graph_util.num_edges(matrix) > config['max_edges']):
+					graph_util.num_edges(matrix) > edges_limit):
 				continue
 
 			# Iterate through all possible labels
