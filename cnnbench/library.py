@@ -24,6 +24,7 @@ from utils import graph_util, embedding_util, print_util as pu
 
 HASH_SIMPLE = True
 ALLOW_2_V = False
+SPEED_RUN = True
 
 CKPT_TEMP = '/scratch/gpfs/stuli/graphs_ckpt_temp.pkl'
 
@@ -479,6 +480,11 @@ def generate_graphs(config, modules_per_stack=1, check_isomorphism=True, create_
 				labels = ['input'] + list(labels) + ['output']
 				module_fingerprint = graph_util.hash_module(matrix, labels, config['hash_algo'])
 
+				if SPEED_RUN:
+					# Skip checking if module already in buckets. Overwrite old module if hash matches
+					if vertices != 2 or ALLOW_2_V: module_buckets[module_fingerprint] = (matrix, labels)
+					continue
+
 				if module_fingerprint not in module_buckets:
 					if vertices != 2 or ALLOW_2_V: module_buckets[module_fingerprint] = (matrix, labels)
 				# Module-level isomorphism check -
@@ -519,6 +525,10 @@ def generate_graphs(config, modules_per_stack=1, check_isomorphism=True, create_
 				matrix = np.eye(vertices, k=1, dtype=np.int8)
 
 				head_fingerprint = graph_util.hash_module(matrix, labels, config['hash_algo'])
+
+				if SPEED_RUN:
+					head_buckets[head_fingerprint] = (matrix, labels)
+					continue
 
 				if head_fingerprint not in head_buckets:
 					head_buckets[head_fingerprint] = (matrix, labels)
@@ -574,6 +584,14 @@ def generate_graphs(config, modules_per_stack=1, check_isomorphism=True, create_
 					graph_fingerprint = graph_util.hash_graph_simple(modules_selected, config['hash_algo'])
 				else:
 					graph_fingerprint = graph_util.hash_graph(modules_selected, config['hash_algo'])
+
+				if SPEED_RUN:
+					total_graphs += 1
+					if HASH_SIMPLE:
+						graph_buckets[graph_fingerprint] = modules_selected
+					else:
+						graph_buckets[graph_fingerprint] = merged_modules
+					continue
 
 				if graph_fingerprint not in graph_buckets:
 					total_graphs += 1
