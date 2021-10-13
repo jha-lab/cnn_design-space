@@ -17,6 +17,8 @@ from tqdm.contrib.itertools import product
 from scipy.stats import zscore
 from copy import deepcopy
 from six.moves import cPickle as pickle
+import multiprocessing as mp
+from functools import partial
 
 from model_builder import CNNBenchModel
 from utils import graph_util, embedding_util, print_util as pu
@@ -25,6 +27,7 @@ from utils import graph_util, embedding_util, print_util as pu
 HASH_SIMPLE = True
 ALLOW_2_V = False
 SPEED_RUN = True
+PARALLEL = True
 
 CKPT_TEMP = '/scratch/gpfs/stuli/graphs_ckpt_temp.pkl'
 
@@ -455,46 +458,62 @@ def generate_graphs(config, modules_per_stack=1, check_isomorphism=True, create_
 	print(f'{pu.bcolors.HEADER}Generating modules...{pu.bcolors.ENDC}')
 	print(f"{pu.bcolors.HEADER}Using {config['module_vertices']} vertices and {len(config['base_ops'])} labels{pu.bcolors.ENDC}")
 
+	if PARALLEL:
+		pool = mp.Pool(32)
+
 	# Generate all possible martix-label pairs (or modules)
 	for vertices in range(2 if ALLOW_2_V else 3, config['module_vertices'] + 1):
 		if vertices <= module_vertices_done: continue
-		for bits in tqdm(range(2 ** (vertices * (vertices - 1) // 2)), desc=f'Generating modules with {vertices} vertices'):
-			# Construct adj matrix from bit string
-			matrix = np.fromfunction(graph_util.gen_is_edge_fn(bits),
-									 (vertices, vertices),
-									 dtype=np.int8)
 
-			# Discard any modules which can be pruned or exceed constraints
-			if max_edges == 0:
-				edges_limit = vertices + extra_edges
-			else:
-				edges_limit = max_edges 
-			if (not graph_util.is_full_dag(matrix) or
-					graph_util.num_edges(matrix) > edges_limit):
-				continue
+		if SPEED_RUN and PARALLEL:
+			modules = pool.map(
+				partial(_get_modules, vertices=vertices, max_edges=max_edges, extra_edges=extra_edges, config=config), 
+				tqdm(range(2 ** (vertices * (vertices - 1) // 2)), desc=f'Generating modules with {vertices} vertices'))
 
-			# Iterate through all possible labels
-			for labels in itertools.product(*[list(config['base_ops'])
-												for _ in range(vertices - 2)]):
-				total_modules += 1
-				labels = ['input'] + list(labels) + ['output']
-				module_fingerprint = graph_util.hash_module(matrix, labels, config['hash_algo'])
+			# Flatten modules list
+			modules = [item for sublist in modules for item in sublist]
+			total_modules += len(modules)
 
-				if SPEED_RUN:
-					# Skip checking if module already in buckets. Overwrite old module if hash matches
-					if vertices != 2 or ALLOW_2_V: module_buckets[module_fingerprint] = (matrix, labels)
+			for module_fingerprint, module in modules:
+				module_buckets[module_fingerprint] = module
+		else:
+			for bits in tqdm(range(2 ** (vertices * (vertices - 1) // 2)), desc=f'Generating modules with {vertices} vertices'):
+				# Construct adj matrix from bit string
+				matrix = np.fromfunction(graph_util.gen_is_edge_fn(bits),
+										 (vertices, vertices),
+										 dtype=np.int8)
+
+				# Discard any modules which can be pruned or exceed constraints
+				if max_edges == 0:
+					edges_limit = vertices + extra_edges
+				else:
+					edges_limit = max_edges 
+				if (not graph_util.is_full_dag(matrix) or
+						graph_util.num_edges(matrix) > edges_limit):
 					continue
 
-				if module_fingerprint not in module_buckets:
-					if vertices != 2 or ALLOW_2_V: module_buckets[module_fingerprint] = (matrix, labels)
-				# Module-level isomorphism check -
-				elif check_isomorphism:
-					canonical_matrix = module_buckets[module_fingerprint]
-					if not graph_util.compare_modules(
-							(matrix, labels), canonical_matrix):
-						print(f'{pu.bcolors.FAIL}Matrix:\n{matrix}\nLabels: {labels}\nis not isomorphic to' \
-								+ f' canonical matrix:\n{canonical_matrix[0]}\nLabels: {canonical_matrix[1]}{pu.bcolors.ENDC}')
-						sys.exit()
+				# Iterate through all possible labels
+				for labels in itertools.product(*[list(config['base_ops'])
+													for _ in range(vertices - 2)]):
+					total_modules += 1
+					labels = ['input'] + list(labels) + ['output']
+					module_fingerprint = graph_util.hash_module(matrix, labels, config['hash_algo'])
+
+					if SPEED_RUN:
+						# Skip checking if module already in buckets. Overwrite old module if hash matches
+						module_buckets[module_fingerprint] = (matrix, labels)
+						continue
+
+					if module_fingerprint not in module_buckets:
+						module_buckets[module_fingerprint] = (matrix, labels)
+					# Module-level isomorphism check -
+					elif check_isomorphism:
+						canonical_matrix = module_buckets[module_fingerprint]
+						if not graph_util.compare_modules(
+								(matrix, labels), canonical_matrix):
+							print(f'{pu.bcolors.FAIL}Matrix:\n{matrix}\nLabels: {labels}\nis not isomorphic to' \
+									+ f' canonical matrix:\n{canonical_matrix[0]}\nLabels: {canonical_matrix[1]}{pu.bcolors.ENDC}')
+							sys.exit()
 
 		print(f'\t{pu.bcolors.OKGREEN}Generated up to {vertices} vertices: {len(module_buckets)} module(s) ' \
 			+ f'({total_modules} without hashing){pu.bcolors.ENDC}')
@@ -636,3 +655,29 @@ def generate_graphs(config, modules_per_stack=1, check_isomorphism=True, create_
 
 def _get_stack(lst: list, repeat: int):
 	return list(itertools.chain.from_iterable(itertools.repeat(x, repeat) for x in lst))
+
+def _get_modules(bits, vertices, max_edges, extra_edges, config):
+	modules_list = []
+
+	# Construct adj matrix from bit string
+	matrix = np.fromfunction(graph_util.gen_is_edge_fn(bits),
+							 (vertices, vertices),
+							 dtype=np.int8)
+
+	# Discard any modules which can be pruned or exceed constraints
+	if max_edges == 0:
+		edges_limit = vertices + extra_edges
+	else:
+		edges_limit = max_edges 
+	if (not graph_util.is_full_dag(matrix) or graph_util.num_edges(matrix) > edges_limit):
+		return []
+
+	# Iterate through all possible labels
+	for labels in itertools.product(*[list(config['base_ops'])
+										for _ in range(vertices - 2)]):
+		labels = ['input'] + list(labels) + ['output']
+		module_fingerprint = graph_util.hash_module(matrix, labels, config['hash_algo'])
+
+		modules_list.append((module_fingerprint, (matrix, labels)))
+
+	return modules_list
