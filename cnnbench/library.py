@@ -577,16 +577,32 @@ def generate_graphs(config, modules_per_stack=1, check_isomorphism=True, create_
 	# Generate graphs using modules and heads
 	for stacks in range(1, config['max_modules']//modules_per_stack + 1):
 		if stacks <= stacks_done: continue
+
 		for module_fingerprints in product(*[module_buckets.keys()
 										for _ in range(stacks)], \
 										desc=f'Generating CNNs with {stacks} stack(s)'): 
-			head_added = False
+
+			if SPEED_RUN and PARALLEL:
+				modules_selected = _get_stack([module_buckets[fingerprint] for fingerprint in module_fingerprints],
+					repeat=modules_per_stack)
+				merged_modules = graph_util.generate_merged_modules(modules_selected)
+
+				assert add_head == True
+
+				graphs = pool.map(
+					partial(_get_graphs, modules_selected=modules_selected, merged_modules=merged_modules, config=config), 
+					head_buckets.keys())
+
+				total_graphs += len(graphs)
+
+				for graph_fingerprint, graph in graphs:
+					graph_buckets[graph_fingerprint] = graph
+
+				continue
+
 			for head_fingerprint in head_buckets.keys():
 				if not create_graphs:
 					total_graphs += 1
-					continue
-
-				if head_added:
 					continue
 
 				modules_selected = _get_stack([module_buckets[fingerprint] for fingerprint in module_fingerprints],
@@ -597,7 +613,6 @@ def generate_graphs(config, modules_per_stack=1, check_isomorphism=True, create_
 					# Add head
 					modules_selected.append(head_buckets[head_fingerprint])
 					merged_modules.append(head_buckets[head_fingerprint])
-					head_added = True
 
 				if HASH_SIMPLE:
 					graph_fingerprint = graph_util.hash_graph_simple(modules_selected, config['hash_algo'])
@@ -681,3 +696,12 @@ def _get_modules(bits, vertices, max_edges, extra_edges, config):
 		modules_list.append((module_fingerprint, (matrix, labels)))
 
 	return modules_list
+
+def _get_graphs(head_fingerprint, modules_selected, merged_modules, config):
+	if HASH_SIMPLE:
+		graph_fingerprint = graph_util.hash_graph_simple(modules_selected, config['hash_algo'])
+		return (graph_fingerprint, modules_selected)
+	else:
+		graph_fingerprint = graph_util.hash_graph(modules_selected, config['hash_algo'])
+		return (graph_fingerprint, merged_modules)
+	
