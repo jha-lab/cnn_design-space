@@ -618,7 +618,8 @@ def get_manual_graph(config: dict, model_name: str):
 				labels.append(f'conv1x1-c{filters}-bn-relu')
 
 			# Depthwise Convolution
-			labels.append(f'conv{block_args["kernel_size"]}x{block_args["kernel_size"]}-s{stride}-dw-p1-bn-silu')
+			padding = 1 if block_args["kernel_size"] == 3 else 2
+			labels.append(f'conv{block_args["kernel_size"]}x{block_args["kernel_size"]}-s{stride}-dw-p{padding}-bn-silu')
 			in_phase_idx = len(labels) - 1
 
 			# Squeeze and Excitation phase
