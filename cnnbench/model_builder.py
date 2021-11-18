@@ -68,6 +68,7 @@ class CNNBenchModel(nn.Module):
 					for j in range(len(self.graphObject.graph) - 1):
 						matrix_conv, labels_conv = self.graphObject.graph[j]
 						x, _, _ = self.run_module(input=x, module_idx=j, matrix=matrix_conv, labels=labels_conv)
+					if x.shape.numel() > 40960: raise Exception('Too large tensor.')
 					input_to_head = torch.flatten(x, start_dim=1)
 					input_channels = input_to_head.shape[1]
 				for v in range(2, num_vertices - 1):
@@ -344,8 +345,12 @@ class CNNBenchModel(nn.Module):
 			assert channels is not None
 
 			channels_conv = re.search('-c([0-9]+)', op)
-			channels_conv = self.config['default_channels'] if channels_conv is None \
-				else int(channels_conv.group(0)[2:])
+			if channels_conv is not None:
+				channels_conv = int(channels_conv.group(0)[2:])
+			elif re.search('-dw', op) is not None:
+				channels_conv = input_channels
+			else:
+				channels_conv = self.config['default_channels']
 
 			assert channels >= channels_conv
 
@@ -537,7 +542,13 @@ class CNNBenchModel(nn.Module):
 			elif labels[v].startswith('conv'):
 				# Output channels for this vertex are based on the number of filters
 				channels = re.search('-c([0-9]+)', labels[v])
-				vertex_channels[v] = int(channels.group(0)[2:]) if channels is not None else self.config['default_channels']
+				if channels is not None:
+					vertex_channels[v] = int(channels.group(0)[2:])
+				elif re.search('-dw', labels[v]) is not None:
+					# For depth-wise convolution, output channels = input channels
+					vertex_channels[v] = vertex_channels[v-1]
+				else:
+					vertex_channels[v] = self.config['default_channels']
 			elif v != num_vertices - 1:
 				# For pooling layers, desired output channels are the same as the
 				# input channels
