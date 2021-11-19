@@ -387,7 +387,7 @@ def generate_dissimilarity_matrix(graph_list: list, config: dict, kernel='GraphE
                         ops_weights.append(5)
             elif op == 'flatten':
                 ops_weights.append(1)
-            elif op.startswith('channel_suffle'):
+            elif op.startswith('channel_shuffle'):
                 ops_weights.append(5)
             elif op.startswith('upsample'):
                 ops_weights.append(5)
