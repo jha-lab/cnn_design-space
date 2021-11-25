@@ -18,10 +18,14 @@ from scipy.stats import zscore
 from copy import deepcopy
 from six.moves import cPickle as pickle
 import multiprocessing as mp
+from multiprocessing import Pool
 from functools import partial
 
 from model_builder import CNNBenchModel
 from utils import graph_util, embedding_util, print_util as pu
+
+# from multiprocessing import set_start_method
+# set_start_method('spawn', force=True)
 
 
 HASH_SIMPLE = True
@@ -86,8 +90,9 @@ class GraphLib(object):
 		"""
 		graph_buckets = generate_graphs(self.config, modules_per_stack=modules_per_stack,
 			check_isomorphism=check_isomorphism, create_graphs=create_graphs)
+		print(f'\n{pu.bcolors.OKGREEN}Graphs generated!{pu.bcolors.ENDC}\n')
 
-		for graph_hash, graph in graph_buckets.items():
+		for graph_hash, graph in tqdm(graph_buckets.items(), 'Generating graph library'):
 			graph = Graph(graph, graph_hash)
 			try:
 				model = CNNBenchModel(self.config, graph)
@@ -302,7 +307,7 @@ class GraphLib(object):
 		if self.library and self.library[0].embedding is not None:
 			embeddings_list = [graph.embedding.tolist() for graph in self.library]
 
-		with open(file_path, 'w', encoding ='utf8') as json_file:
+		with open(file_path, 'w+', encoding ='utf8') as json_file:
 			json.dump({'config': self.config,
 						'matrices': matrices_list,
 						'labels': labels_list,
@@ -458,17 +463,16 @@ def generate_graphs(config, modules_per_stack=1, check_isomorphism=True, create_
 	print(f'{pu.bcolors.HEADER}Generating modules...{pu.bcolors.ENDC}')
 	print(f"{pu.bcolors.HEADER}Using {config['module_vertices']} vertices and {len(config['base_ops'])} labels{pu.bcolors.ENDC}")
 
-	if PARALLEL:
-		pool = mp.Pool(32)
 
 	# Generate all possible martix-label pairs (or modules)
 	for vertices in range(2 if ALLOW_2_V else 3, config['module_vertices'] + 1):
 		if vertices <= module_vertices_done: continue
 
 		if SPEED_RUN and PARALLEL:
-			modules = pool.map(
-				partial(_get_modules, vertices=vertices, max_edges=max_edges, extra_edges=extra_edges, config=config), 
-				tqdm(range(2 ** (vertices * (vertices - 1) // 2)), desc=f'Generating modules with {vertices} vertices'))
+			with Pool(32) as pool:
+				modules = pool.map(
+					partial(_get_modules, vertices=vertices, max_edges=max_edges, extra_edges=extra_edges, config=config), 
+					tqdm(range(2 ** (vertices * (vertices - 1) // 2)), desc=f'Generating modules with {vertices} vertices'))
 
 			# Flatten modules list
 			modules = [item for sublist in modules for item in sublist]
@@ -589,9 +593,10 @@ def generate_graphs(config, modules_per_stack=1, check_isomorphism=True, create_
 
 				assert add_head == True
 
-				graphs = pool.map(
-					partial(_get_graphs, modules_selected=modules_selected, merged_modules=merged_modules, config=config), 
-					head_buckets.keys())
+				with Pool(32) as pool:
+					graphs = pool.map(
+						partial(_get_graphs, head_buckets=head_buckets, modules_selected=modules_selected, 
+							merged_modules=merged_modules, config=config), head_buckets.keys())
 
 				total_graphs += len(graphs)
 
@@ -664,6 +669,8 @@ def generate_graphs(config, modules_per_stack=1, check_isomorphism=True, create_
 			'module_buckets': module_buckets, 'head_buckets': head_buckets, 'graph_buckets': graph_buckets},
 			open(CKPT_TEMP, 'wb+'), pickle.HIGHEST_PROTOCOL)
 
+		
+	print(f'{pu.bcolors.OKGREEN}\nSaved checkpoint!{pu.bcolors.ENDC}')
 
 	return graph_buckets
 
@@ -697,7 +704,10 @@ def _get_modules(bits, vertices, max_edges, extra_edges, config):
 
 	return modules_list
 
-def _get_graphs(head_fingerprint, modules_selected, merged_modules, config):
+def _get_graphs(head_fingerprint, head_buckets, modules_selected, merged_modules, config):
+	modules_selected.append(head_buckets[head_fingerprint])
+	merged_modules.append(head_buckets[head_fingerprint])
+
 	if HASH_SIMPLE:
 		graph_fingerprint = graph_util.hash_graph_simple(modules_selected, config['hash_algo'])
 		return (graph_fingerprint, modules_selected)
