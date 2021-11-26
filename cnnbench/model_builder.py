@@ -68,7 +68,7 @@ class CNNBenchModel(nn.Module):
 					for j in range(len(self.graphObject.graph) - 1):
 						matrix_conv, labels_conv = self.graphObject.graph[j]
 						x, _, _ = self.run_module(input=x, module_idx=j, matrix=matrix_conv, labels=labels_conv)
-					if x.shape.numel() > 40960: raise Exception('Too large tensor.')
+					if x.shape.numel() > 6400000: raise Exception('Too large tensor.')
 					input_to_head = torch.flatten(x, start_dim=1)
 					input_channels = input_to_head.shape[1]
 				for v in range(2, num_vertices - 1):
