@@ -7,7 +7,9 @@
 
 import os
 import sys
-sys.path.append('../boshnas/')
+
+# Make sure that the boshnas directory exists outside the cnn_design-space directory.
+sys.path.append('../../boshnas/boshnas/')
 
 import argparse
 import numpy as np
