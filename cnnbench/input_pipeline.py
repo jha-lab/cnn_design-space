@@ -121,11 +121,11 @@ def get_loader(config: dict, shuffle=True):
     val_sampler = SubsetRandomSampler(val_indices)
 
     train_loader = DataLoader(train_dataset, batch_size=config['train_batch_size'],
-                            sampler=train_sampler, pin_memory=True, num_workers=8)
+                            sampler=train_sampler, pin_memory=True, num_workers=16)
     val_loader = DataLoader(val_dataset, batch_size=config['train_batch_size'],
-                            sampler=val_sampler, pin_memory=True, num_workers=8)
+                            sampler=val_sampler, pin_memory=True, num_workers=16)
     test_loader = DataLoader(test_dataset, batch_size=config['test_batch_size'],
-                            shuffle=False, pin_memory=True, num_workers=8)
+                            shuffle=False, pin_memory=True, num_workers=16)
 
     return train_loader, val_loader, test_loader, total_size, val_size
 
