@@ -702,7 +702,7 @@ if __name__ == '__main__':
         except yaml.YAMLError as exc:
             raise exc
 
-    model_graph = graphLib.get_graph(model_hash=args.model_hash)
+    model_graph, _ = graphLib.get_graph(model_hash=args.model_hash)
 
     if args.autotune == 0:
         auto_tune = False
