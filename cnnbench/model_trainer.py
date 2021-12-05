@@ -29,6 +29,7 @@ import shutil
 import hashlib
 import json
 import time
+import yaml
 
 import multiprocessing as mp
 mp.set_start_method('forkserver', force=True)
