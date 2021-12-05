@@ -17,8 +17,8 @@ models_dir: /scratch/gpfs/stuli/cnn_design-space/cnnbench_models/CIFAR10/
 
 # Training parameters
 epochs: 200
-train_batch_size: 64
-test_batch_size: 64
+train_batch_size: 2
+test_batch_size: 2
 
 # Architecture parameters
 max_modules: 16
