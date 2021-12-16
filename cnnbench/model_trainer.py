@@ -29,6 +29,7 @@ import shutil
 import hashlib
 import json
 import time
+import yaml
 
 import multiprocessing as mp
 mp.set_start_method('forkserver', force=True)
@@ -564,7 +565,8 @@ def train(config,
             train_loss = 0
             correct = 0
             for data, target in train_loader:
-                data, target = data.to(device), target.to(device)
+                if torch.cuda.is_available():
+                    data, target = data.to(device), target.to(device)
                 output = model(data)
                 train_loss += F.cross_entropy(output, target, reduction='sum').item()  # sum up batch loss
                 pred = output.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
@@ -581,7 +583,8 @@ def train(config,
             val_loss = 0
             correct = 0
             for data, target in val_loader:
-                data, target = data.to(device), target.to(device)
+                if torch.cuda.is_available():
+                    data, target = data.to(device), target.to(device)
                 output = model(data)
                 val_loss += F.cross_entropy(output, target, reduction='sum').item()  # sum up batch loss
                 pred = output.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
@@ -598,7 +601,8 @@ def train(config,
             test_loss = 0
             correct = 0
             for data, target in test_loader:
-                data, target = data.to(device), target.to(device)
+                if torch.cuda.is_available():
+                    data, target = data.to(device), target.to(device)
                 output = model(data)
                 test_loss += F.cross_entropy(output, target, reduction='sum').item()  # sum up batch loss
                 pred = output.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
@@ -701,7 +705,7 @@ if __name__ == '__main__':
         except yaml.YAMLError as exc:
             raise exc
 
-    model_graph = graphLib.get_graph(model_hash=args.model_hash)
+    model_graph, _ = graphLib.get_graph(model_hash=args.model_hash)
 
     if args.autotune == 0:
         auto_tune = False
@@ -711,5 +715,7 @@ if __name__ == '__main__':
     neighbor_file = None
     if args.neighbor_file is not None and args.neighbor_file != '':
         neighbor_file = args.neighbor_file
+
+    print(f'Training CNN model with hash: {args.model_hash}')
 
     worker(config=config, graphObject=model_graph, model_dir=args.model_dir, auto_tune=auto_tune, neighbor_file=neighbor_file)
