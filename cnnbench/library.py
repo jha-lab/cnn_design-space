@@ -586,7 +586,7 @@ def generate_graphs(config, modules_per_stack=1, check_isomorphism=True, create_
 										for _ in range(stacks)], \
 										desc=f'Generating CNNs with {stacks} stack(s)'): 
 
-			if SPEED_RUN and PARALLEL:
+			if SPEED_RUN and PARALLEL and create_graphs:
 				modules_selected = _get_stack([module_buckets[fingerprint] for fingerprint in module_fingerprints],
 					repeat=modules_per_stack)
 				merged_modules = graph_util.generate_merged_modules(modules_selected)
