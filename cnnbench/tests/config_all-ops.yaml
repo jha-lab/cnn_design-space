@@ -23,7 +23,7 @@ test_batch_size: 128
 # Architecture parameters
 max_edges: 11
 max_modules: 90
-module_vertices: 8
+module_vertices: 5 #8
 head_vertices: 8
 base_ops:
   - channel_shuffle-g8
