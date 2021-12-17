@@ -20,6 +20,7 @@ from six.moves import cPickle as pickle
 import multiprocessing as mp
 from multiprocessing import Pool
 from functools import partial
+from decimal import Decimal
 
 from model_builder import CNNBenchModel
 from utils import graph_util, embedding_util, print_util as pu
@@ -92,15 +93,16 @@ class GraphLib(object):
 			check_isomorphism=check_isomorphism, create_graphs=create_graphs)
 		print(f'\n{pu.bcolors.OKGREEN}Graphs generated!{pu.bcolors.ENDC}\n')
 
-		for graph_hash, graph in tqdm(graph_buckets.items(), 'Generating graph library'):
-			graph = Graph(graph, graph_hash)
-			try:
-				model = CNNBenchModel(self.config, graph)
+		if create_graphs:
+			for graph_hash, graph in tqdm(graph_buckets.items(), 'Generating graph library'):
+				graph = Graph(graph, graph_hash)
+				try:
+					model = CNNBenchModel(self.config, graph)
 
-				# Only add graph to library if correponding CNN model works
-				self.library.append(graph)
-			except:
-				pass
+					# Only add graph to library if correponding CNN model works
+					self.library.append(graph)
+				except:
+					pass
 
 		self.modules_per_stack = modules_per_stack
 
@@ -582,11 +584,19 @@ def generate_graphs(config, modules_per_stack=1, check_isomorphism=True, create_
 	for stacks in range(1, config['max_modules']//modules_per_stack + 1):
 		if stacks <= stacks_done: continue
 
+		if not create_graphs:
+			new_graphs = len(module_buckets) ** stacks * len(head_buckets) 
+			print(f'Found {new_graphs} CNNs for {stacks} stack(s)')
+
+			total_graphs += new_graphs
+
+			continue
+
 		for module_fingerprints in product(*[module_buckets.keys()
 										for _ in range(stacks)], \
 										desc=f'Generating CNNs with {stacks} stack(s)'): 
 
-			if SPEED_RUN and PARALLEL and create_graphs:
+			if SPEED_RUN and PARALLEL:
 				modules_selected = _get_stack([module_buckets[fingerprint] for fingerprint in module_fingerprints],
 					repeat=modules_per_stack)
 				merged_modules = graph_util.generate_merged_modules(modules_selected)
@@ -606,9 +616,6 @@ def generate_graphs(config, modules_per_stack=1, check_isomorphism=True, create_
 				continue
 
 			for head_fingerprint in head_buckets.keys():
-				if not create_graphs:
-					total_graphs += 1
-					continue
 
 				modules_selected = _get_stack([module_buckets[fingerprint] for fingerprint in module_fingerprints],
 					repeat=modules_per_stack)
@@ -669,6 +676,7 @@ def generate_graphs(config, modules_per_stack=1, check_isomorphism=True, create_
 			'module_buckets': module_buckets, 'head_buckets': head_buckets, 'graph_buckets': graph_buckets},
 			open(CKPT_TEMP, 'wb+'), pickle.HIGHEST_PROTOCOL)
 
+	print(f'\nGenerated a total of {format(Decimal(str(total_graphs)), '.6e')} graphs.')
 		
 	print(f'{pu.bcolors.OKGREEN}\nSaved checkpoint!{pu.bcolors.ENDC}')
 
