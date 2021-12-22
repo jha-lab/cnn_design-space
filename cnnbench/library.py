@@ -676,7 +676,7 @@ def generate_graphs(config, modules_per_stack=1, check_isomorphism=True, create_
 			'module_buckets': module_buckets, 'head_buckets': head_buckets, 'graph_buckets': graph_buckets},
 			open(CKPT_TEMP, 'wb+'), pickle.HIGHEST_PROTOCOL)
 
-	print(f'\nGenerated a total of {format(Decimal(str(total_graphs)), '.6e')} graphs.')
+	print(f'\nGenerated a total of {format(Decimal(str(total_graphs)), ".6e")} graphs.')
 		
 	print(f'{pu.bcolors.OKGREEN}\nSaved checkpoint!{pu.bcolors.ENDC}')
 
