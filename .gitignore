@@ -6,5 +6,4 @@
 ./results/**
 ./job_scripts/**
 **/old/
-*.slurm
 *.out
