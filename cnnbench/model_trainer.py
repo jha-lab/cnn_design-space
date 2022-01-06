@@ -554,6 +554,7 @@ def train(config,
                 print('Train Epoch: {} [{:6d}/{:6d} ({:.0f}%)]\tLearning Rate: {:.6f}\tLoss: {:.6f}'.format(
                     epoch, batch_idx * batch_size, train_size,
                     100. * batch_idx / len(train_loader), optimizer.param_groups[0]['lr'], loss.item()))
+                if np.isnan(loss.item()): raise ValueError('NaN loss encountered!')
             
             if gpuFrac:
                 # Dry run complete
