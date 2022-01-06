@@ -12,8 +12,8 @@ from six.moves import cPickle as pickle
 
 
 CKPT_TEMP = '/scratch/gpfs/stuli/graphs_ckpt_temp.pkl'
-MODULES_SAMPLE_SIZE = 50
-HEADS_SAMPLE_SIZE = 50
+MODULES_SAMPLE_SIZE = 10
+HEADS_SAMPLE_SIZE = 10
 
 
 def main():
