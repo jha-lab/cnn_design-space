@@ -187,7 +187,7 @@ def get_manual_graph(config: dict, model_name: str):
 		model_graph = []
 
 		conv_module_1 = (np.eye(4, k=1, dtype=np.int8),
-			['input', 'conv7x7-c64-s2-p3-bn-relu', 'maxpool3x3-s2-p1', 'output'])
+			['input', 'conv7x7-c64-p3-s2-bn-relu', 'maxpool3x3-p1-s2', 'output'])
 
 		model_graph.append(conv_module_1)
 
@@ -195,7 +195,7 @@ def get_manual_graph(config: dict, model_name: str):
 		proj_mat[0, -1] = 1
 
 		conv_module_2 = (proj_mat,
-			['input', 'conv3x3-c64-p1-s1-bn-relu', 'conv3x3-c64-p1-s1-bn-relu', 'output'])
+			['input', 'conv3x3-c64-p1-bn-relu', 'conv3x3-c64-p1-bn-relu', 'output'])
 
 		model_graph.extend((conv_module_2,) * 2)
 
@@ -225,7 +225,7 @@ def get_manual_graph(config: dict, model_name: str):
 		model_graph = []
 
 		conv_module_1 = (np.eye(4, k=1, dtype=np.int8),
-			['input', 'conv7x7-c64-s2-p3-bn-relu', 'maxpool3x3-s2-p1', 'output'])
+			['input', 'conv7x7-c64-p3-s2-bn-relu', 'maxpool3x3-p1-s2', 'output'])
 
 		model_graph.append(conv_module_1)
 
@@ -233,7 +233,7 @@ def get_manual_graph(config: dict, model_name: str):
 		proj_mat[0, -1] = 1
 
 		conv_module_2 = (proj_mat,
-			['input', 'conv3x3-c64-p1-s1-bn-relu', 'conv3x3-c64-p1-s1-bn-relu', 'output'])
+			['input', 'conv3x3-c64-p1-bn-relu', 'conv3x3-c64-p1-bn-relu', 'output'])
 
 		model_graph.extend((conv_module_2,) * 3)
 
@@ -263,7 +263,7 @@ def get_manual_graph(config: dict, model_name: str):
 		model_graph = []
 
 		conv_module_1 = (np.eye(4, k=1, dtype=np.int8),
-			['input', 'conv7x7-c64-s2-p3-bn-relu', 'maxpool3x3-s2-p1', 'output'])
+			['input', 'conv7x7-c64-p3-s2-bn-relu', 'maxpool3x3-p1-s2', 'output'])
 
 		model_graph.append(conv_module_1)
 
@@ -271,7 +271,7 @@ def get_manual_graph(config: dict, model_name: str):
 		proj_mat[0, -1] = 1
 
 		conv_module_2 = (proj_mat,
-			['input', 'conv1x1-c64-bn-relu', 'conv3x3-c64-p1-s1-bn-relu', 
+			['input', 'conv1x1-c64-bn-relu', 'conv3x3-c64-p1-bn-relu', 
 			 'conv1x1-c256-bn-relu', 'output'])
 
 		model_graph.extend((conv_module_2,) * 3)
@@ -305,7 +305,7 @@ def get_manual_graph(config: dict, model_name: str):
 		model_graph = []
 
 		conv_module_1 = (np.eye(4, k=1, dtype=np.int8),
-			['input', 'conv7x7-c64-s2-p3-bn-relu', 'maxpool3x3-s2-p1', 'output'])
+			['input', 'conv7x7-c64-p3-s2-bn-relu', 'maxpool3x3-p1-s2', 'output'])
 
 		model_graph.append(conv_module_1)
 
@@ -313,7 +313,7 @@ def get_manual_graph(config: dict, model_name: str):
 		proj_mat[0, -1] = 1
 
 		conv_module_2 = (proj_mat,
-			['input', 'conv1x1-c64-bn-relu', 'conv3x3-c64-p1-s1-bn-relu', 
+			['input', 'conv1x1-c64-bn-relu', 'conv3x3-c64-p1-bn-relu', 
 			 'conv1x1-c256-bn-relu', 'output'])
 
 		model_graph.extend((conv_module_2,) * 3)
@@ -347,7 +347,7 @@ def get_manual_graph(config: dict, model_name: str):
 		model_graph = []
 
 		conv_module_1 = (np.eye(4, k=1, dtype=np.int8),
-			['input', 'conv7x7-c64-s2-p3-bn-relu', 'maxpool3x3-s2-p1', 'output'])
+			['input', 'conv7x7-c64-p3-s2-bn-relu', 'maxpool3x3-p1-s2', 'output'])
 
 		model_graph.append(conv_module_1)
 
@@ -355,7 +355,7 @@ def get_manual_graph(config: dict, model_name: str):
 		proj_mat[0, -1] = 1
 
 		conv_module_2 = (proj_mat,
-			['input', 'conv1x1-c64-bn-relu', 'conv3x3-c64-p1-s1-bn-relu', 
+			['input', 'conv1x1-c64-bn-relu', 'conv3x3-c64-p1-bn-relu', 
 			 'conv1x1-c256-bn-relu', 'output'])
 
 		model_graph.extend((conv_module_2,) * 3)
@@ -389,7 +389,7 @@ def get_manual_graph(config: dict, model_name: str):
 		model_graph = []
 
 		conv_module_1 = (np.eye(4, k=1, dtype=np.int8),
-			['input', 'conv3x3-c24-p1-bn-relu', 'maxpool3x3-s2-p1', 'output'])
+			['input', 'conv3x3-c24-p1-bn-relu', 'maxpool3x3-p1-s2', 'output'])
 
 		model_graph.append(conv_module_1)
 
@@ -415,15 +415,15 @@ def get_manual_graph(config: dict, model_name: str):
 		for i in range(len(channels)):
 			conv_module_2 = (shuffle_matrix_1,
 				['input', f'conv1x1-c{channels[i]//4}-g8-bn-relu', 'channel_shuffle-g8', 
-				f'conv3x3-c{channels[i]//4}-dw-s2-p1-bn-relu', 
-				f'conv3x3-c{channels[i] - input_channels[i]}-p1-g8-bn-relu', 'avgpool3x3-s2-p1', 'output'])
+				f'conv3x3-c{channels[i]//4}-dw-p1-s2-bn-relu', 
+				f'conv3x3-c{channels[i] - input_channels[i]}-g8-p1-bn-relu', 'avgpool3x3-p1-s2', 'output'])
 
 			model_graph.append(conv_module_2)
 
 			conv_module_3 = (shuffle_matrix_2,
 				['input', f'conv1x1-c{channels[i]//4}-g8-bn-relu', 'channel_shuffle-g8', 
-				f'conv3x3-c{channels[i]//4}-dw-s1-p1-bn-relu', 
-				f'conv3x3-c{channels[i]}-p1-g8-bn-relu', 'output'])
+				f'conv3x3-c{channels[i]//4}-dw-p1-bn-relu', 
+				f'conv3x3-c{channels[i]}-g8-p1-bn-relu', 'output'])
 
 			model_graph.extend((conv_module_3,) * repetitions[i])
 
@@ -448,9 +448,10 @@ def get_manual_graph(config: dict, model_name: str):
 		for i in range(len(channels)):
 			if i == 0: input_channels = 32
 			
+			conv_temp = f'conv3x3-c{input_channels}-dw-p1-s{strides[i]}-bn-relu' if strides[i] != 1 else f'conv3x3-c{input_channels}-dw-p1-bn-relu'
 			conv_module = (np.eye(4, k=1, dtype=np.int8),
-				['input', f'conv3x3-c{input_channels}-dw-s{strides[i]}-p1-bn-relu', 
-				f'conv1x1-c{channels[i]}-s1-bn-relu', 'output'])
+				['input', conv_temp, 
+				f'conv1x1-c{channels[i]}-bn-relu', 'output'])
 			input_channels = channels[i]
 
 			model_graph.append(conv_module)
@@ -466,7 +467,7 @@ def get_manual_graph(config: dict, model_name: str):
 		model_graph = []
 
 		conv_module_1 = (np.eye(7, k=1, dtype=np.int8),
-			['input', 'conv7x7-c64-s2-p3-bn-relu', 'maxpool3x3-s2', 'conv1x1-c64-bn-relu',
+			['input', 'conv7x7-c64-p3-s2-bn-relu', 'maxpool3x3-s2', 'conv1x1-c64-bn-relu',
 			 'conv3x3-c192-p1-bn-relu', 'maxpool3x3-s2', 'output'])
 
 		model_graph.append(conv_module_1)
@@ -495,7 +496,7 @@ def get_manual_graph(config: dict, model_name: str):
 			conv_module = (inception_matrix,
 				['input', f'conv1x1-c{channels[i][0]}-bn-relu', f'conv1x1-c{channels[i][1]}-bn-relu', 
 				f'conv3x3-c{channels[i][2]}-p1-bn-relu', f'conv1x1-c{channels[i][3]}-bn-relu',
-				f'conv5x5-c{channels[i][4]}-p1-bn-relu', 'maxpool3x3-s2-p1', 
+				f'conv5x5-c{channels[i][4]}-p1-bn-relu', 'maxpool3x3-p1-s2', 
 				f'conv1x1-c{channels[i][5]}-bn-relu', 'output'])
 
 			model_graph.append(conv_module)
@@ -531,7 +532,7 @@ def get_manual_graph(config: dict, model_name: str):
 			conv_module = (proj_mat,
 				['input', f'conv3x3-c{input_channels}-dw-p1-bn-relu', f'conv1x1-c{output_channels[i]}-bn-relu',
 				f'conv3x3-c{output_channels[i]}-dw-p1-bn-relu', f'conv1x1-c{output_channels[i]}-bn-relu',
-				 'maxpool3x3-s2-p1', 'output'])
+				 'maxpool3x3-p1-s2', 'output'])
 			input_channels = output_channels[i]
 			model_graph.append(conv_module)
 
@@ -540,7 +541,7 @@ def get_manual_graph(config: dict, model_name: str):
 
 		for _ in range(8):
 			conv_module = (proj_mat,
-				['input', 'conv3x3-c728-p1-dw-bn-relu', 'conv1x1-c728-bn-relu',
+				['input', 'conv3x3-c728-dw-p1-bn-relu', 'conv1x1-c728-bn-relu',
 				 'conv3x3-c728-dw-p1-bn-relu', 'conv1x1-c728-bn-relu',
 				 'conv3x3-c728-dw-p1-bn-relu', 'conv1x1-c728-bn-relu',
 				 'output'])
@@ -552,7 +553,7 @@ def get_manual_graph(config: dict, model_name: str):
 		conv_module = (proj_mat,
 				['input', f'conv3x3-c728-dw-bn-relu', f'conv1x1-c728-bn-relu',
 				f'conv3x3-c728-dw-bn-relu', f'conv1x1-c1024-bn-relu',
-				 'maxpool3x3-s2-p1', 'output'])
+				 'maxpool3x3-p1-s2', 'output'])
 
 		model_graph.append(conv_module)
 
@@ -672,11 +673,11 @@ def get_manual_graph(config: dict, model_name: str):
 
 			if resolution == config['image_size']:
 				conv_module_1 = (np.eye(3, k=1, dtype=np.int8),
-					['input', f'conv3x3-c{filters}-s2-p1-bn-silu', 'output'])
+					['input', f'conv3x3-c{filters}-p1-s2-bn-silu', 'output'])
 			else:
 				assert resolution > config['image_size']
 				conv_module_1 = (np.eye(4, k=1, dtype=np.int8),
-					['input', f'upsample-s{resolution}', f'conv3x3-c{filters}-s2-p1-bn-silu', 'output'])
+					['input', f'upsample-s{resolution}', f'conv3x3-c{filters}-p1-s2-bn-silu', 'output'])
 
 			model_graph.append(conv_module_1)
 
