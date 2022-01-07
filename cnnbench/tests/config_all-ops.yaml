@@ -49,16 +49,16 @@ base_ops:
   - upsample-s600
   - upsample-s800
   - maxpool3x3-s2
-  - maxpool3x3-s2-p1
+  - maxpool3x3-p1-s2
   - maxpool3x3 # An extra
   - maxpool3x3-p1 # An extra
   - maxpool5x5-s2 # An extra
-  - maxpool5x5-s2-p1 # An extra
+  - maxpool5x5-p1-s2 # An extra
   - maxpool5x5
   - maxpool5x5-p1
-  - avgpool3x3-s2-p1
+  - avgpool3x3-p1-s2
   - avgpool3x3
-  - avgpool5x5-s2-p1 # An extra
+  - avgpool5x5-p1-s2 # An extra
   - avgpool5x5 # An extra
   - conv1x1-c32-dw-bn-relu # An extra
   - conv1x1-c32-dw-bn-silu # An extra
