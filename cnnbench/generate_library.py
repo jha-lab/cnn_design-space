@@ -20,7 +20,7 @@ def main():
         metavar='', 
         type=str, 
         help='path to yaml file for the design space',
-        default='./configs/CIFAR10/config.yaml')
+        default='./tests/config_all-ops.yaml')
     parser.add_argument('--dataset_file',
         metavar='',
         type=str,
