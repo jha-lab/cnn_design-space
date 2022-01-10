@@ -25,7 +25,7 @@ def main():
         metavar='', 
         type=str, 
         help='path to yaml file for the design space',
-        default='./config_all-ops_super_duper_reduced.yaml')
+        default='./config_all-ops.yaml')
     parser.add_argument('--dataset_file',
         metavar='',
         type=str,
@@ -83,11 +83,11 @@ def main():
         # Generating graph library
         for i in range(len(models_mini)):
             print(f'{pu.bcolors.HEADER}Adding model: {models_mini[i]} with currently {len(graphLib.library)} models in graphLib...{pu.bcolors.ENDC}')
+            model_1 = manual_models.get_manual_graph(config, model_name=models_mini[i])
+            graphLib.library.append(model_1)
             for j in range(i+1, len(models_mini)):
                 print(f'{pu.bcolors.HEADER}Interpolating between {models_mini[i]} and {models_mini[j]}...{pu.bcolors.ENDC}')
-                model_1 = manual_models.get_manual_graph(config, model_name=models_mini[i])
                 model_2 = manual_models.get_manual_graph(config, model_name=models_mini[j])
-                graphLib.library.append(model_1)
                 graphLib.library.extend(graphLib.get_interpolants(model_1, model_2, 1, 1, check_isomorphism=False))
 
         graphLib.modules_per_stack = 1
@@ -98,6 +98,14 @@ def main():
             print(f'{pu.bcolors.OKGREEN}No isomorphisms detected!{pu.bcolors.ENDC}')
         else:
             print(f'{pu.bcolors.WARNING}Graphs with the same hash encountered!{pu.bcolors.ENDC}')
+
+            hashes = set()
+            library_new = []
+            for graph in graphLib.library:
+                if graph.hash not in hashes:
+                    hashes.add(graph.hash)
+                    library_new.append(graph)
+            graphLib.library = library_new
         print()
 
         # Save dataset without embeddings to dataset_file
