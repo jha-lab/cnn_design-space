@@ -182,7 +182,7 @@ class GraphLib(object):
 
 		if SAMPLED_INTERP:
 			graphs_stack_product = []
-			for _ in range(min(200, num_interp)):
+			for _ in range(min(50, num_interp)):
 				selected_stacks = []
 				for stacks in graphs_stack:
 					selected_stacks.append(random.sample(stacks, 1)[0])
