@@ -47,7 +47,7 @@ from matplotlib import pyplot as plt
 
 
 LOG_INTERVAL = 10
-NUM_SAMPLES = 64 
+NUM_SAMPLES = 16
 KEEP_TRIALS = False
 HP_SCHDLR = 'ASHA' # One in ['ASHA', 'MSR']
 HP_ALGO = 'RAND' # One in ['RAND', 'HEBO']
