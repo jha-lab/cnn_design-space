@@ -5,8 +5,6 @@
 
 manual_models=("lenet" "alexnet" "vgg11" "vgg13" "vgg16" "vgg19" "resnet18" "resnet34" "resnet50" "resnet101" "resnet152" "shufflenet" \
 	"mobilenet" "googlenet" "xception")
-cluster="della"
-id="stuli"
 nodes="ee"
 tune=1
 
@@ -24,10 +22,8 @@ Help()
 	echo
 	echo -e "Syntax: source ${CYAN}job_creator_script.sh${ENDC} [${YELLOW}flags${ENDC}]"
 	echo "Flags:"
-	echo -e "${YELLOW}-c${ENDC} | ${YELLOW}--cluster${ENDC} [default = ${GREEN}\"della\"${ENDC}] \t Selected cluster - adroit, tiger to della"
 	echo -e "${YELLOW}-t${ENDC} | ${YELLOW}--tune${ENDC} [default = ${GREEN}\"0\"${ENDC}] \t\t To tune training recipe"
 	echo -e "${YELLOW}-n${ENDC} | ${YELLOW}--nodes${ENDC} [default = ${GREEN}\"ee\"${ENDC}] \t\t Selected nodes for della in [\"ee\", \"all\"]"
-	echo -e "${YELLOW}-i${ENDC} | ${YELLOW}--id${ENDC} [default = ${GREEN}\"stuli\"${ENDC}] \t\t Selected PU-NetID to email slurm updates"
 	echo -e "${YELLOW}-h${ENDC} | ${YELLOW}--help${ENDC} \t\t\t\t Call this help message"
 	echo
 }
@@ -35,19 +31,9 @@ Help()
 while [[ $# -gt 0 ]]
 do
 	case "$1" in
-		-c | --cluster)
-			shift
-			cluster=$1
-			shift
-			;;
 		-t | --tune)
 			shift
 			tune=$1
-			shift
-			;;
-		-i | --id)
-			shift
-			id=$1
 			shift
 			;;
 		-n | --nodes)
@@ -66,45 +52,6 @@ do
 	esac
 done  
 
-if [[ $tune == 0 ]]
-then
-	if [[ $cluster == "adroit" ]]
-	then
-		cluster_gpu="gpu:tesla_v100:1"
-	elif [[ $cluster == "tiger" ]]
-	then
-		cluster_gpu="gpu:1"
-	elif [[ $cluster == "della" ]]
-	then
-		cluster_gpu="gpu:1"
-	else
-		echo "Unrecognized cluster"
-		return 1
-	fi
-else
-	if [[ $cluster == "adroit" ]]
-	then
-		cluster_gpu="gpu:tesla_v100:2"
-	elif [[ $cluster == "tiger" ]]
-	then
-		cluster_gpu="gpu:2"
-	elif [[ $cluster == "della" ]]
-	then
-		cluster_gpu="gpu:2"
-	else
-		echo "Unrecognized cluster"
-		return 1
-	fi
-fi
-
-counter=1
-max_ee=4
-
-if [[ $tune == 1 ]]
-then
-	max_ee=2
-fi
-
 for model in ${manual_models[*]}
 do
 	job_file="job_${model}.slurm"
@@ -114,21 +61,12 @@ do
 	# Create SLURM job script to train surrogate model
 	echo "#!/bin/bash" >> $job_file
 	echo "#SBATCH --job-name=cnnbench_${model}        # create a short name for your job" >> $job_file
-	if [[ $cluster == "della" ]]
-	then
-		if [[ $counter -le $max_ee || $nodes == "ee" ]]
-		then
-			echo "#SBATCH --partition gpu-ee				  # prioritize della-i12g[1-2] nodes" >> $job_file
-		fi
-	fi
 	echo "#SBATCH --nodes=1                           # node count" >> $job_file
 	echo "#SBATCH --ntasks=1                          # total number of tasks across all nodes" >> $job_file
 	echo "#SBATCH --cpus-per-task=64                  # cpu-cores per task (>1 if multi-threaded tasks)" >> $job_file
 	echo "#SBATCH --mem-per-cpu=2G                    # memory per cpu-core (4G is default)" >> $job_file
-	echo "#SBATCH --gres=${cluster_gpu}               # number of gpus per node" >> $job_file
+	echo "#SBATCH --gres=gpu:1                        # number of gpus per node" >> $job_file
 	echo "#SBATCH --time=48:00:00                     # total run time limit (HH:MM:SS)" >> $job_file
-	echo "#SBATCH --mail-type=all                     # send email" >> $job_file
-	echo "#SBATCH --mail-user=${id}@princeton.edu" >> $job_file
 	echo "" >> $job_file
 	echo "module purge" >> $job_file
 	echo "module load anaconda3/2020.7" >> $job_file
@@ -140,7 +78,7 @@ do
 	then
 		echo "python manual_models.py --model_name ${model}" >> $job_file
 	else
-		echo "python manual_models.py --model_name ${model} --model_dir /scratch/gpfs/stuli/cnn_design-space/results/manual_models/${model}_tune --auto_tune" >> $job_file
+		echo "python manual_models.py --model_name ${model} --model_dir ./results/manual_models/${model}_tune --auto_tune" >> $job_file
 	fi
 
 	((counter++))
