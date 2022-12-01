@@ -1,0 +1,17 @@
+name: cnnbench
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - cudatoolkit=11.1
+  - pytorch=1.8
+  - torchvision
+  - pyyaml
+  - ipykernel
+  - scikit-learn
+  - tqdm
+  - matplotlib
+  - ipywidgets
+  - ray-tune
+  - orange3
+  - scons
