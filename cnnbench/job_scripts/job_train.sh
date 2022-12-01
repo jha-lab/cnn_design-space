@@ -4,8 +4,6 @@
 
 # Author : Shikhar Tuli
 
-cluster="tiger"
-id="stuli"
 autotune="0"
 model_hash=""
 model_dir=""
@@ -26,8 +24,6 @@ Help()
    echo
    echo -e "Syntax: source ${CYAN}./job_scripts/job_train.sh${ENDC} [${YELLOW}flags${ENDC}]"
    echo "Flags:"
-   echo -e "${YELLOW}-c${ENDC} | ${YELLOW}--cluster${ENDC} [default = ${GREEN}\"tiger\"${ENDC}] \t\t Selected cluster - adroit, tiger or della"
-   echo -e "${YELLOW}-i${ENDC} | ${YELLOW}--id${ENDC} [default = ${GREEN}\"stuli\"${ENDC}] \t\t\t Selected PU-NetID to email slurm updates"
    echo -e "${YELLOW}-a${ENDC} | ${YELLOW}--autotune${ENDC} [default = ${GREEN}\"0\"${ENDC}] \t\t To autotune the given model"
    echo -e "${YELLOW}-m${ENDC} | ${YELLOW}--model_hash${ENDC} [default = ${GREEN}\"\"${ENDC}] \t\t Model hash"
    echo -e "${YELLOW}-d${ENDC} | ${YELLOW}--model_dir${ENDC} [default = ${GREEN}\"\"${ENDC}] \t\t Directory to save the model"
@@ -42,16 +38,6 @@ Help()
 while [[ $# -gt 0 ]]
 do
 case "$1" in
-    -c | --cluster)
-        shift
-        cluster=$1
-        shift
-        ;;
-    -i | --id)
-        shift
-        id=$1
-        shift
-        ;;
     -a | --autotune)
         shift
         autotune=$1
@@ -98,19 +84,6 @@ case "$1" in
 esac
 done  
 
-if [[ $cluster == "adroit" ]]
-then
-  cluster_gpu="gpu:tesla_v100:4"
-elif [[ $cluster == "tiger" ]]
-then
-  cluster_gpu="gpu:4"
-elif [[ $cluster == "della" ]]
-then
-  cluster_gpu="gpu:2"
-else
-	echo "Unrecognized cluster"
-	return 1
-fi
 
 job_file="./job_${model_hash}.slurm"
 mkdir -p "./job_scripts/${dataset}/"
@@ -124,30 +97,27 @@ echo "#SBATCH --nodes=1                                      # node count" >> $j
 echo "#SBATCH --ntasks=1                                     # total number of tasks across all nodes" >> $job_file
 echo "#SBATCH --cpus-per-task=20                             # cpu-cores per task (>1 if multi-threaded tasks)" >> $job_file
 echo "#SBATCH --mem=128G                                     # memory per cpu-core (4G is default)" >> $job_file
-# echo "#SBATCH --gres=${cluster_gpu}                          # number of gpus per node" >> $job_file
 # echo "#SBATCH --gres=gpu:1" >> $job_file
 echo "#SBATCH --time=144:00:00                               # total run time limit (HH:MM:SS)" >> $job_file
-# echo "#SBATCH --mail-type=all                                # send email" >> $job_file
-# echo "#SBATCH --mail-user=stuli@princeton.edu" >> $job_file
 echo "" >> $job_file
 echo "module purge" >> $job_file
 echo "module load anaconda3/2020.7" >> $job_file
 echo "conda activate cnnbench" >> $job_file
 echo "" >> $job_file
 echo "cd ../.." >> $job_file
-# echo "" >> $job_file
-# echo "python model_trainer.py --config_file ${config_file} \
-#   --graphlib_file ${graphlib_file} \
-#   --neighbor_file ${neighbor_file} \
-#   --model_dir ${model_dir} \
-#   --model_hash ${model_hash} \
-#   --autotune ${autotune}" >> $job_file
-echo "export MKL_SERVICE_FORCE_INTEL=1" >> $job_file
-echo "python -c \"import time, torch, random, os, numpy; \
-    os.environ['MKL_SERVICE_FORCE_INTEL'] = '1'; \
-    acc = random.random(); \
-    ckpt = {'train_accuracies': [acc], 'val_accuracies': [acc], 'test_accuracies': [acc]}; \
-    os.makedirs('${model_dir}'); \
-    torch.save(ckpt, os.path.join('${model_dir}', 'model.pt'))\"" >> $job_file
+echo "" >> $job_file
+echo "python model_trainer.py --config_file ${config_file} \
+  --graphlib_file ${graphlib_file} \
+  --neighbor_file ${neighbor_file} \
+  --model_dir ${model_dir} \
+  --model_hash ${model_hash} \
+  --autotune ${autotune}" >> $job_file
+# echo "export MKL_SERVICE_FORCE_INTEL=1" >> $job_file
+# echo "python -c \"import time, torch, random, os, numpy; \
+#     os.environ['MKL_SERVICE_FORCE_INTEL'] = '1'; \
+#     acc = random.random(); \
+#     ckpt = {'train_accuracies': [acc], 'val_accuracies': [acc], 'test_accuracies': [acc]}; \
+#     os.makedirs('${model_dir}'); \
+#     torch.save(ckpt, os.path.join('${model_dir}', 'model.pt'))\"" >> $job_file
 
 sbatch $job_file
