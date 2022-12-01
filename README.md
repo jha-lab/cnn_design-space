@@ -16,7 +16,6 @@ The tool can be used to search among a large set of CNN architectures.
   - [Generate computational graphs](#generate-computational-graphs)
   - [Run evaluation over all generated graphs](#run-evaluation-over-all-generated-graphs)
   - [Generate the CNNBench dataset](#generate-the-cnnbench-dataset)
-- [Job Scripts](#job-scripts)
 - [Developer](#developer)
 - [Cite this work](#cite-this-work)
 - [License](#license)
