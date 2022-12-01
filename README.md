@@ -2,13 +2,10 @@
 
 ![Python Version](https://img.shields.io/badge/python-v3.6%20%7C%20v3.7%20%7C%20v3.8-blue)
 ![Conda](https://img.shields.io/badge/conda%7Cconda--forge-v4.8.3-blue)
-![Tensorflow](https://img.shields.io/badge/tensorflow--gpu-v2.2-orange)
-<!-- ![Commits Since Last Release](https://img.shields.io/github/commits-since/JHA-Lab/cnn_design-space/v0.2/main) -->
-<!-- ![Tests](https://github.com/JHA-Lab/cnn_design-space/workflows/tests/badge.svg) -->
-<!-- ![Hits](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2FJHA-Lab%2Fcnn_design-space&count_bg=%23FFC401&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=hits&edge_flat=false) -->
+![PyTorch](https://img.shields.io/badge/pytorch-v1.11.0-e74a2b)
 
 This repository contains the tool **CNNBench** which can be used to generate and evaluate different Convolutional Neural Network (CNN) architectures pertinent to the domain of Machine-Learning Accelerators. 
-This repository has been forked from [nasbench](https://github.com/google-research/nasbench) and then expanded to cover a larger set of CNN architectures.
+The tool can be used to search among a large set of CNN architectures.
 
 ## Table of Contents
 - [Environment Setup](#environment-setup)
@@ -20,15 +17,16 @@ This repository has been forked from [nasbench](https://github.com/google-resear
   - [Run evaluation over all generated graphs](#run-evaluation-over-all-generated-graphs)
   - [Generate the CNNBench dataset](#generate-the-cnnbench-dataset)
 - [Job Scripts](#job-scripts)
-- [Colab](#colab)
-- [Todo](#todo)
+- [Developer](#developer)
+- [Cite this work](#cite-this-work)
+- [License](#license)
   
 
 ## Environment setup
 
 ### Clone this repository
 ```
-git clone https://github.com/JHA-Lab/cnn_design-space.git
+git clone https://github.com/jha-lab/cnn_design-space.git
 cd cnn_design-space
 ```
 ### Setup python environment  
@@ -40,9 +38,8 @@ pip install -r requirements.txt
 ```  
 * **CONDA**
 ```
-source env_setup.sh
+conda env create -f environment.yaml
 ```
-This installs a GPU version of Tensorflow. To run on CPU, `tensorflow-cpu` can be used instead.
 
 ## Basic run of the tool
 
@@ -54,63 +51,48 @@ The stack of modules is followed by global average pooling and a final dense sof
 
 ### Download and prepare the CIFAR-10 dataset
 ```
-cd cnnbenchs/scripts
-python generate_tfrecords.py
+cd cnnbench
+python dataset_downloader.py
 ```
 
-_To use another dataset (among CIFAR-10, CIFAR-100, MNIST, or ImageNet) use input arguments; check:_ `python generate_tfrecords.py --help`.
+_To use another dataset (among CIFAR-10, CIFAR-100, MNIST, or ImageNet) use input arguments; check:_ `python dataset_downloader.py --help`.
 
 ### Generate computational graphs
 ```
-cd ../../job_scripts
-python generate_graphs_script.py
+python generate_library.py
 ```
-This will create a `.json` file of all graphs at: `../results/vertices_2/generate_graphs.json` using the MD5 hashing algorithm.
+This will create a `.json` file of all graphs at: `dataset/dataset.json` using the SHA-256 hashing algorithm and three modules per stack.
 
-_To generate graphs of upto 'n' vertices with SHA-256 hashing algorithm, use:_ `python generate_graphs_script.py --max_vertices n --hash_algo sha256`.
-
-### Run evaluation over all generated graphs
+### Run BOSHNAS
 ```
-python run_evaluation_script.py
+python run_boshnas.py
 ```
-This will save all the evaluated results and model checkpoints to `../results/vertices_2/evaluation`.
+All training scripts use bash and have been implemented using [SLURM](https://slurm.schedmd.com/documentation.html). This will have to be setup before running the experiments.
 
-_To run evaluation over graphs generate with 'n' vertices, use:_ `python run_evaluation_script.py --module_vertices n`. _For more input arguments, check:_ `python run_evaluation_script.py --helpfull`.
+Other flags can be used to control the training procedure (check using `python run_boshnas.py --help`). This script uses the SLURM scheduler over mutiple compute nodes in a cluster (each cluster assumed to have 1 GPU, this can be changed in the script `job_scripts/job_train.sh`). SLURM can also be used in scenarios where distributed nodes are not available.
 
-### Generate the CNNBench dataset
+## Developer
+
+[Shikhar Tuli](https://github.com/shikhartuli). For any questions, comments or suggestions, please reach me at [stuli@princeton.edu](mailto:stuli@princeton.edu).
+
+## Cite this work
+
+Cite our work using the following bitex entry:
+```bibtex
+@article{tuli2022codebench,
+      title={{CODEBench}: A Neural Architecture and Hardware Accelerator Co-Design Framework}, 
+      author={Tuli, Shikhar and Li, Chia-Hao and Sharma, Ritvik and Jha, Niraj K.},
+      year={2022},
+      eprint={----.-----},
+      archivePrefix={arXiv},
+      primaryClass={--.--}
+}
 ```
-python generate_dataset_script.py
-```
-This generates the CNNBench dataset as a `cnnbench.tfrecord` file with the evaluation results for all computational graphs that are trained.
 
-_For visualization use:_ `visualization/cnnbench_results.ipynb`.
+## License
 
-This basic run as explained above can be implemented automatically by running the script: `job_scripts/basic_run.sh`.
+BSD-3-Clause. 
+Copyright (c) 2022, Shikhar Tuli and Jha Lab.
+All rights reserved.
 
-## Job Scripts
-
-To efficiently use mutiple GPUs/TPUs on a cluster, a slurm script is provided at: `job_scripts/job_basic.slurm`. To run the tool on multiple nodes and utilize multiple GPUs in a cluster according to given constraints in the design-space, use `job_scripts/job_creator_script.sh`. 
-
-For more details on how to use this script, check: `source job_scripts/job_creator_script.sh --help`. Currently, these scripts only support running on **Adroit/Tiger clusters** at Princeton University.
-
-More information about these clusters and their usage can be found at the [Princeton Research Computing website](https://researchcomputing.princeton.edu/systems-and-services/available-systems).
-
-## Colab
-
-You can directly run tests on the generated dataset using a Google Colaboratory without needing to install anything on your local machine. Click "Open in Colab" below:
-
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/JHA-Lab/cnn_design-space/blob/main/visualization/cnnbench_colab.ipynb)
-
-## Todo
-
-<!-- The total number of `TODO` statements in the code-base:
-
-![TODOs Badge](https://byob.yarr.is/JHA-Lab/cnn_design-space/todos) -->
-
-Broad-level tasks left:
-
-1. Implement end-to-end PyTorch training (replacing functions running in compatibility mode)
-2. Implement automatic hyper-parameter tuning.
-3. Define popular networks in expanded CNNBench framework.
-4. Run training on popular networks and correlate with performance in literature.
-5. Implement graph generation in the expanded design space starting from clusters around popular networks.
+See License file for more details.
