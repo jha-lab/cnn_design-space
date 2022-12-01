@@ -45,9 +45,7 @@ def worker(config_file: str,
 	models_dir: str,
 	model_hash: str,
 	chosen_neighbor_hash: str,
-	autotune: bool,
-	cluster: str,
-	id: str):
+	autotune: bool):
 	"""Worker to finetune or pretrain the given model
 	
 	Args:
@@ -57,8 +55,6 @@ def worker(config_file: str,
 		model_hash (str): hash of the given model
 		chosen_neighbor_hash (str): hash of the chosen neighbor
 		autotune (bool): to autotune the given model
-		cluster (str): name of the cluster - "adroit", "tiger" or "della"
-		id (str): PU-NetID that is used to run slurm commands
 	
 	Returns:
 		job_id, pretrain (str, bool): Job ID for the slurm scheduler and whether pretraining
@@ -86,8 +82,6 @@ def worker(config_file: str,
 		print('No neighbor found. Training model from scratch.')
 
 	args = ['--dataset', config['dataset']]
-	args.extend(['--cluster', cluster])
-	args.extend(['--id', id])
 	args.extend(['--autotune', '1' if autotune else '0'])
 	args.extend(['--model_hash', model_hash])
 	args.extend(['--model_dir', os.path.join(models_dir, model_hash)])
@@ -285,16 +279,6 @@ def main():
 		type=int,
 		help='number of parallel jobs for training BOSHNAS',
 		default=8)
-	parser.add_argument('--cluster',
-		metavar='',
-		type=str,
-		help='name of the cluster - "adroit", "tiger" or "della"',
-		default='della')
-	parser.add_argument('--id',
-		metavar='',
-		type=str,
-		help='PU-NetID that is used to run slurm commands',
-		default='stuli')
 
 	args = parser.parse_args()
 
@@ -346,7 +330,7 @@ def main():
 
 			job_id, scratch = worker(config_file=args.config_file, graphlib_file=args.graphlib_file,
 				models_dir=args.models_dir, model_hash=model_hash, chosen_neighbor_hash=None,
-				autotune=autotune, cluster=args.cluster, id=args.id)
+				autotune=autotune)
 			assert scratch is True
 
 			train_type = 'S' if scratch else 'WT'
@@ -442,7 +426,7 @@ def main():
 					# Finetune model with the chosen neighbor
 					job_id, scratch = worker(config_file=args.config_file, graphlib_file=args.graphlib_file,
 						models_dir=args.models_dir, model_hash=model.hash, autotune=autotune, 
-						chosen_neighbor_hash=chosen_neighbor_hash, cluster=args.cluster, id=args.id)
+						chosen_neighbor_hash=chosen_neighbor_hash)
 					assert scratch is False
 				else:
 					# If no neighbor was found, proceed to next query model
@@ -472,7 +456,7 @@ def main():
 				# Train model
 				job_id, scratch = worker(config_file=args.config_file, graphlib_file=args.graphlib_file,
 					models_dir=args.models_dir, model_hash=model.hash, autotune=autotune, 
-					chosen_neighbor_hash=None, cluster=args.cluster, id=args.id)
+					chosen_neighbor_hash=None)
 				assert scratch is True
 
 				train_type = 'S' if scratch else 'WT'
@@ -501,7 +485,7 @@ def main():
 				# Train model
 				job_id, scratch = worker(config_file=args.config_file, graphlib_file=args.graphlib_file,
 					models_dir=args.models_dir, model_hash=model.hash, autotune=autotune, 
-					chosen_neighbor_hash=None, cluster=args.cluster, id=args.id)
+					chosen_neighbor_hash=None)
 				assert scratch is False
 
 				new_queries += 1
@@ -528,7 +512,7 @@ def main():
 			# Train sampled model
 			job_id, scratch = worker(config_file=args.config_file, graphlib_file=args.graphlib_file,
 				models_dir=args.models_dir, model_hash=model.hash, autotune=autotune, 
-				chosen_neighbor_hash=None, cluster=args.cluster, id=args.id)
+				chosen_neighbor_hash=None)
 			assert scratch is False
 
 			new_queries += 1
